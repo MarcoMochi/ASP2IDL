@@ -43,7 +43,7 @@ class Rule:
         for atom in pos:
             temp_and.append(GT(Symbol(self.head, self.type), Symbol(atom, self.type)))
         for atom in neg:
-            temp_and.append(Not(LT(Symbol(atom, self.type),Symbol("bot", self.type))))
+            temp_and.append(Not(Symbol(atom+"_B", BOOL)))
         return And(temp_and)
 
     def create_difference(self):
@@ -60,7 +60,7 @@ class Rule:
     def rule_difference(self, pos):
         temp_and = []
         for atom in pos:
-            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), And([LT(Symbol(self.head, self.type),Symbol("bot", self.type)),LT(Symbol(atom, self.type),Symbol("bot", self.type))])))
+            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), And(Symbol(self.head+"_B", BOOL),Symbol(atom+"_B", BOOL))))
         return And(temp_and)
 
 
@@ -68,12 +68,15 @@ class Rule:
         if len(self._rules_id) > 0:
             if self.head == "F":
                 return Iff(Bool(True), And(self.rule_completion()))
-            return Iff(LT(Symbol(self.head, self.type),Symbol("bot", self.type)), Or(self.rule_completion()))
+            return Iff(Symbol(self.head+"_B", BOOL), Or(self.rule_completion()))
         else:
-            return Iff(Bool(True),Not(LT(Symbol(self.head, self.type),Symbol("bot", self.type))))
+            return Iff(Bool(True),Not(Symbol(self.head+"_B", BOOL)))
 
     def rule_completion(self):
         temp = []
         for atom in self._rules_id:
             temp.append(Symbol(atom, BOOL))
         return temp
+
+    def create_relation_bool(self):
+        return Iff(Symbol(self.head+"_B", BOOL), LT(Symbol(self.head, self.type), Symbol("bot", self.type)))

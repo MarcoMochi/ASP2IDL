@@ -84,6 +84,7 @@ def create_rules(head_to_bodies, number, manual):
             rules.append(elem.create_association())
             rules.append(elem.create_difference())
             rules.append(elem.create_completion())
+            #rules.append(elem.create_relation_bool())
 
     for r in rules:
         print(r)
