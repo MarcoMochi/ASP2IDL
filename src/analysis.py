@@ -68,7 +68,7 @@ def extractAnswerSet(folder_name):
 
             with open(folder_name + "Answer_Set/" + path, "w") as w:
                 for elem in answer_set:
-                    w.write(f"{elem}.\n")
+                    w.write(f":- not {elem}.\n")
 
     return answer_set
 

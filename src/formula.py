@@ -27,6 +27,11 @@ class Rule:
     def get_negatives(self):
         return self._negative_body
 
+    def get_rules_id(self):
+        return self._rules_id
+
+
+    #Creation of rules using pysmt library
     def create_association(self):
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
@@ -63,7 +68,6 @@ class Rule:
             temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), And([LT(Symbol(self.head, self.type),Symbol("bot", self.type)),LT(Symbol(atom, self.type),Symbol("bot", self.type))])))
         return And(temp_and)
 
-
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "F":
@@ -77,3 +81,67 @@ class Rule:
         for atom in self._rules_id:
             temp.append(Symbol(atom, BOOL))
         return temp
+
+    ##Creation of rules manuall
+    def create_association_manual(self):
+        final_rule = ""
+        used_var = []
+        for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
+            rule = "(assert ("
+            if self.head == "F":
+                used_var.append(rule_id)
+                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))})))"
+            else:
+                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)}))"
+            final_rule += rule +"\n"
+        return final_rule[:-1]
+
+    def rule_associated_manual(self, pos, neg):
+        rule = ""
+        if len(pos) == 0 and len(neg) == 0:
+            return "true"
+        if len(pos) + len(neg) > 1:
+            rule += "(and "
+        for atom in pos:
+            rule += f"(< |{atom}| |{self.head}|) "
+        for atom in neg:
+            rule += f"(not (< |{atom}| bot)) "
+        if len(pos) + len(neg) > 1:
+            return rule + ")"
+        return rule
+
+    def create_difference_manual(self):
+        rule = ""
+        for positive in self._positive_body:
+            if len(positive) > 0:
+                if self.head == "F":
+                    return rule
+                else:
+                    rule += f"(assert ({self.rule_difference_manual(positive)})\n"
+
+        return rule[:-1]
+
+    def rule_difference_manual(self, pos):
+        rule = ""
+        if len(pos) > 1:
+            rule += "(and "
+        for atom in pos:
+            rule += f"=> (< |{atom}| |{self.head}|) (and (< |{self.head}| bot) (< |{atom}| bot))) "
+        if len(pos) > 1:
+            return rule + ")"
+        return rule
+
+    def create_completion_manual(self):
+        rule = f"(assert (= "
+        if len(self._rules_id) > 0:
+            if self.head == "F":
+                return rule + f"true (and {self.rule_completion_manual()})))"
+            return rule + f"(< |{self.head}| bot) (or {self.rule_completion_manual()})))"
+        else:
+            return rule + f"true (not (< |{self.head}| bot))))"
+
+    def rule_completion_manual(self):
+        rule = ""
+        for atom in self._rules_id:
+            rule += f"|{atom}| "
+        return rule

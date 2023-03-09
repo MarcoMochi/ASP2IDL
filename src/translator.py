@@ -5,6 +5,7 @@ from pysmt.shortcuts import Symbol, Solver, And, Equals, Int, Real, get_env, is_
 from pysmt.typing import INT, REAL
 from pysmt.logics import QF_IDL, QF_RDL, QF_UFIDL
 import sys, errno
+import z3
 
 def reader(file):
     lines = []
@@ -74,16 +75,35 @@ def create_atoms(rules, number):
 
 def create_rules(head_to_bodies, number, manual):
     rules = []
-    atoms = []
+    definitions = []
+    atoms = set()
+    variable = set()
 
     for key, elem in head_to_bodies.items():
         if manual:
-            atoms.append(f"(define {key.replace('(','').replace(')','')}::{str(number).lower()})")
-            rules.append(elem.create_manual_default())
+            atoms.add(key)
+            variable.update(elem.get_rules_id())
+            rules.append(elem.create_association_manual())
+            rules.append(elem.create_difference_manual())
+            rules.append(elem.create_completion_manual())
         else:
             rules.append(elem.create_association())
             rules.append(elem.create_difference())
             rules.append(elem.create_completion())
+
+    if manual:
+        if number == REAL:
+            definitions.append(f"(declare-fun bot () Real)")
+            for atom in atoms:
+                definitions.append(f"(declare-fun |{atom}| () Real)")
+        else:
+            definitions.append(f"(declare-fun bot () Int)")
+            for atom in atoms:
+                definitions.append(f"(declare-fun |{atom}| () Int)")
+        for atom in variable:
+            definitions.append(f"(declare-fun |{atom}| () Bool)")
+
+        return definitions + rules
 
     return And(rules)
 
@@ -138,8 +158,6 @@ def call_solver(model, number):
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
-        text = ""
-        #print(to_smtlib(model, daggify=False))
         if number == REAL:
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:
@@ -155,10 +173,23 @@ def writer(model, name_file, output_path, printer, manual, number):
 
     elif printer:
         with open(output_path + name_file, "w") as w:
-            #w.write(f"(set-logic QF_IDL)\n")
+            if number == REAL:
+                w.write(f"(set-logic QF_RDL)\n")
+            else:
+                w.write(f"(set-logic QF_IDL)\n")
             for rule in model:
-                w.write(f"{rule}\n")
-            w.write(f"(check)\n")
-            w.write(f"(show-model)")
-            w.write(f"(show-stats)")
-            #w.write(f"(get-model)")
+                if rule != "":
+                    w.write(f"{rule}\n")
+            w.write(f"(check-sat)\n")
+            w.write(f"(get-model)\n")
+
+def simplify_smt2_file(file_path):
+    tactics = ("simplify", "solve-eqs", "propagate-values", "simplify")
+    query = z3.parse_smt2_file(file_path)
+    goal = z3.Goal()
+    goal.add(query)
+    simplified = z3.Then(*tactics)(goal).as_expr()
+    solver = z3.SolverFor("QF_IDL")
+    solver.add(simplified)
+    with open("prova_simpl.asp", "w") as writer:
+        writer.write(solver.sexpr())
