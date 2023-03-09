@@ -85,9 +85,6 @@ def create_rules(head_to_bodies, number, manual):
             rules.append(elem.create_difference())
             rules.append(elem.create_completion())
 
-    for r in rules:
-        print(r)
-
     return And(rules)
 
 def extract_atoms(model, number):
