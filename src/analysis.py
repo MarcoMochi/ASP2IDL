@@ -53,10 +53,19 @@ def extractAnswerSet(folder_name):
             for elem in rules[1:]:
                 try:
                     atom = elem.split("|")[1]
-                    if "true" in elem.split("|")[2]:
-                        answer_set.append(atom.replace("_B", ""))
+                    if "-" in elem.split("|")[2]:
+                        assignments[atom] = -int(re.search(r"\d+", elem.split("|")[2]).group(0))
+                    else:
+                        assignments[atom] = int(re.search(r"\d+", elem.split("|")[2]).group(0))
                 except:
-                    pass
+                    if " bot " in elem:
+                        atom = "bot"
+                        assignments[atom] = int(re.search(r"\d+", elem).group(0))
+            limit = assignments["bot"]
+            for key, value in assignments.items():
+                if value < limit:
+                    answer_set.append(key)
+
             with open(folder_name + "Answer_Set/" + path, "w") as w:
                 for elem in answer_set:
                     w.write(f"{elem}.\n")
