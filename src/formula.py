@@ -122,14 +122,10 @@ class Rule:
         return rule[:-1]
 
     def rule_difference_manual(self, pos):
-        rule = ""
-        if len(pos) > 1:
-            rule += "(and "
+        rule = "and "
         for atom in pos:
-            rule += f"=> (< |{atom}| |{self.head}|) (and (< |{self.head}| bot) (< |{atom}| bot))) "
-        if len(pos) > 1:
-            return rule + ")"
-        return rule
+            rule += f"(=> (< |{atom}| |{self.head}|) (and (< |{self.head}| bot) (< |{atom}| bot)))"
+        return rule + ")"
 
     def create_completion_manual(self):
         rule = f"(assert (= "
