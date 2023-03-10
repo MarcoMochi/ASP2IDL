@@ -34,7 +34,7 @@ def create_atoms(rules, number):
     for i, rule in enumerate(rules):
         try:
             if rule.startswith(":-"):
-                head, body = "F", [part.strip() for part in rule.split(":-")][1]
+                head, body = "bot", [part.strip() for part in rule.split(":-")][1]
             else:
                 head, body = [part.strip() for part in rule.split(":-")]
 
@@ -44,7 +44,7 @@ def create_atoms(rules, number):
         if (expressions := head_to_bodies.get(head)) is None:
             head_to_bodies[head] = expressions = Rule(head, number)
 
-        expressions.add_associated_variable(i)
+        expressions.add_associated_variable(i+1)
 
         if body != None:
             positive_atoms = [atom for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if "not " not in atom]
@@ -58,15 +58,15 @@ def create_atoms(rules, number):
             for atom in negative_atoms:
                 if atom not in head_to_bodies.keys():
                     atom_without_support[atom] = Rule(atom, number)
-
-            if head in atom_without_support.keys():
-                del atom_without_support[head]
         else:
             expressions.populate_positive([])
             expressions.populate_negative([])
 
-    if "F" in atom_without_support.keys():
-        del atom_without_support["F"]
+        if head in atom_without_support.keys():
+            del atom_without_support[head]
+
+    if "bot" in atom_without_support.keys():
+        del atom_without_support["bot"]
 
     for key, rule in atom_without_support.items():
         head_to_bodies[key] = rule
@@ -79,29 +79,33 @@ def create_rules(head_to_bodies, number, manual):
     atoms = set()
     variable = set()
 
+    i = 0
     for key, elem in head_to_bodies.items():
+
         if manual:
             atoms.add(key)
             variable.update(elem.get_rules_id())
-            rules.append(elem.create_association_manual())
-            rules.append(elem.create_difference_manual())
-            rules.append(elem.create_completion_manual())
+            rules.append(elem.create_association_manual(i))
+            rules.append(elem.create_difference_manual(i))
+            rules.append(elem.create_completion_manual(i))
         else:
             rules.append(elem.create_association())
             rules.append(elem.create_difference())
             rules.append(elem.create_completion())
+        i += 1
 
     if manual:
+        if "bot" not in atoms:
+            atoms.add("bot")
+
         if number == REAL:
-            definitions.append(f"(declare-fun bot () Real)")
             for atom in atoms:
                 definitions.append(f"(declare-fun |{atom}| () Real)")
         else:
-            definitions.append(f"(declare-fun bot () Int)")
             for atom in atoms:
                 definitions.append(f"(declare-fun |{atom}| () Int)")
         for atom in variable:
-            definitions.append(f"(declare-fun |{atom}| () Bool)")
+            definitions.append(f"(declare-fun {atom} () Bool)")
 
         return definitions + rules
 

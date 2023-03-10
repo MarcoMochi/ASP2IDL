@@ -35,7 +35,7 @@ class Rule:
     def create_association(self):
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            if self.head == "F":
+            if self.head == "bot":
                 total_and.append(Iff(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
             else:
                 total_and.append(Iff(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
@@ -55,7 +55,7 @@ class Rule:
         total_and = []
         for positive in self._positive_body:
             if len(positive) > 0:
-                if self.head == "F":
+                if self.head == "bot":
                     return And([])
                 else:
                     total_and.append(self.rule_difference(positive))
@@ -70,7 +70,7 @@ class Rule:
 
     def create_completion(self):
         if len(self._rules_id) > 0:
-            if self.head == "F":
+            if self.head == "bot":
                 return Iff(Bool(True), And(self.rule_completion()))
             return Iff(LT(Symbol(self.head, self.type),Symbol("bot", self.type)), Or(self.rule_completion()))
         else:
@@ -83,17 +83,19 @@ class Rule:
         return temp
 
     ##Creation of rules manuall
-    def create_association_manual(self):
+    def create_association_manual(self, i):
         final_rule = ""
         used_var = []
+        j = 0
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "(assert ("
-            if self.head == "F":
+            rule = "(assert (! ("
+            if self.head == "bot":
                 used_var.append(rule_id)
-                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))})))"
+                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))})):named A_{i}_{j})"
             else:
-                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)}))"
-            final_rule += rule +"\n"
+                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)}) :named A_{i}_{j})"
+            final_rule += rule +")\n"
+            j += 1
         return final_rule[:-1]
 
     def rule_associated_manual(self, pos, neg):
@@ -110,14 +112,14 @@ class Rule:
             return rule + ")"
         return rule
 
-    def create_difference_manual(self):
+    def create_difference_manual(self,i):
         rule = ""
-        for positive in self._positive_body:
+        for j, positive in enumerate(self._positive_body):
             if len(positive) > 0:
-                if self.head == "F":
+                if self.head == "bot":
                     return rule
                 else:
-                    rule += f"(assert ({self.rule_difference_manual(positive)})\n"
+                    rule += f"(assert (! ({self.rule_difference_manual(positive)} :named B_{i}_{j}))\n"
 
         return rule[:-1]
 
@@ -127,17 +129,18 @@ class Rule:
             rule += f"(=> (< |{atom}| |{self.head}|) (and (< |{self.head}| bot) (< |{atom}| bot)))"
         return rule + ")"
 
-    def create_completion_manual(self):
-        rule = f"(assert (= "
+
+    def create_completion_manual(self, i):
+        rule = f"(assert (! (= "
         if len(self._rules_id) > 0:
-            if self.head == "F":
-                return rule + f"true (and {self.rule_completion_manual()})))"
-            return rule + f"(< |{self.head}| bot) (or {self.rule_completion_manual()})))"
+            if self.head == "bot":
+                return rule + f"true (and {self.rule_completion_manual()})) :named C_{i}))"
+            return rule + f"(< |{self.head}| bot) (or {self.rule_completion_manual()})) :named C_{i}))"
         else:
-            return rule + f"true (not (< |{self.head}| bot))))"
+            return rule + f"true (not (< |{self.head}| bot))):named C_{i}))"
 
     def rule_completion_manual(self):
         rule = ""
         for atom in self._rules_id:
-            rule += f"|{atom}| "
+            rule += f"{atom} "
         return rule
