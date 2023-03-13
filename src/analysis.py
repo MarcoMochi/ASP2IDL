@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from translator import reader
 
-def analyze_yices(folder_name):
+def analyze_yices(folder_name, name=""):
     list_stats = []
     timeout_problems = []
     files = os.listdir(folder_name)
@@ -23,15 +23,17 @@ def analyze_yices(folder_name):
             stats = stats[stats.index("("):]
             temp_dict = {"Instance": str(path), "State": status}
             for elem in stats[1:-1]:
-                key, value = elem.split((" "))
-                key = key.replace(":", "")
-                temp_dict[key.capitalize()] = float(value)
+                try:
+                    key, value = elem.split((" "))
+                    key = key.replace(":", "")
+                    temp_dict[key.capitalize()] = float(value)
+                except:
+                    pass
             list_stats.append(temp_dict)
 
 
     result = pd.DataFrame.from_dict(list_stats)
-    print(list_stats)
-    result.to_excel(folder_name+"analisi_yices.xlsx", engine='xlsxwriter')
+    result.to_excel(f"{folder_name}analisi_yices_{name}.xlsx", engine='xlsxwriter')
 
 def extractAnswerSet(folder_name):
     files = os.listdir(folder_name)
@@ -115,10 +117,18 @@ def main():
     else:
         smt_solver = sys.argv[2]
 
-        if smt_solver.lower() == "yices":
-            analyze_yices(folder_name)
-        elif smt_solver.lower() == "clingo":
-            analyze_clingo(folder_name)
+        try:
+            name = sys.argv[3]
+            if smt_solver.lower() == "yices":
+                analyze_yices(folder_name, name)
+            elif smt_solver.lower() == "clingo":
+                analyze_clingo(folder_name, name)
+        except:
+            if smt_solver.lower() == "yices":
+                analyze_yices(folder_name)
+            elif smt_solver.lower() == "clingo":
+                analyze_clingo(folder_name)
+
 
 
 if __name__ == '__main__':

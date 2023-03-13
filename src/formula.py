@@ -134,7 +134,7 @@ class Rule:
             for atom in pos:
                 rule += f"(=> (< |{atom}| |{self.head}|) (< |{atom}| bot))"
         else:
-            rule += f"(=> (< |{pos[0]}| |{self.head}|) (and (< |{pos[0]}| bot) (< |{self.head}| bot))"
+            rule += f"(=> (< |{pos[0]}| |{self.head}|) (and (< |{pos[0]}| bot) (< |{self.head}| bot)))"
         return rule + ")"
 
 
