@@ -3,7 +3,7 @@ from pysmt.typing import INT, REAL, BOOL
 types = [INT, REAL]
 
 class Rule:
-    def __init__(self, head, type):
+    def __init__(self, head, type, ottimization=False):
         if type not in types:
             raise ValueError(f"error: type must be one of {types}")
         self.head = head
@@ -11,6 +11,7 @@ class Rule:
         self._negative_body = []
         self._rules_id = []
         self.type = type
+        self.ott = ottimization
 
     def add_associated_variable(self, id):
         self._rules_id.append(f"W{str(id)}")
@@ -53,19 +54,23 @@ class Rule:
 
     def create_difference(self):
         total_and = []
-        for positive in self._positive_body:
+        for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) > 0:
                 if self.head == "bot":
                     return And([])
                 else:
-                    total_and.append(self.rule_difference(positive))
+                    total_and.append(self.rule_difference(positive, negative))
 
         return And(total_and)
 
-    def rule_difference(self, pos):
+    def rule_difference(self, pos, neg):
         temp_and = []
-        for atom in pos:
-            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), And([LT(Symbol(self.head, self.type),Symbol("bot", self.type)),LT(Symbol(atom, self.type),Symbol("bot", self.type))])))
+        if len(pos) > 1 or len(neg) > 0 or not self.ott:
+            for atom in pos:
+                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), LT(Symbol(atom, self.type),Symbol("bot", self.type))))
+        else:
+            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(pos[0], self.type)),
+                                    (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
     def create_completion(self):
@@ -88,12 +93,12 @@ class Rule:
         used_var = []
         j = 0
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "(assert (! ("
+            rule = "(assert ("
             if self.head == "bot":
                 used_var.append(rule_id)
-                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))})):named A_{i}_{j})"
+                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
             else:
-                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)}) :named A_{i}_{j})"
+                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)})"
             final_rule += rule +")\n"
             j += 1
         return final_rule[:-1]
@@ -114,30 +119,33 @@ class Rule:
 
     def create_difference_manual(self,i):
         rule = ""
-        for j, positive in enumerate(self._positive_body):
+        for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) > 0:
                 if self.head == "bot":
                     return rule
                 else:
-                    rule += f"(assert (! ({self.rule_difference_manual(positive)} :named B_{i}_{j}))\n"
+                    rule += f"(assert ({self.rule_difference_manual(positive, negative)})\n"
 
         return rule[:-1]
 
-    def rule_difference_manual(self, pos):
+    def rule_difference_manual(self, pos, neg):
         rule = "and "
-        for atom in pos:
-            rule += f"(=> (< |{atom}| |{self.head}|) (and (< |{self.head}| bot) (< |{atom}| bot)))"
+        if len(pos) > 1 or len(neg) > 0 or not self.ott:
+            for atom in pos:
+                rule += f"(=> (< |{atom}| |{self.head}|) (< |{atom}| bot))"
+        else:
+            rule += f"(=> (< |{pos[0]}| |{self.head}|) (and (< |{pos[0]}| bot) (< |{self.head}| bot))"
         return rule + ")"
 
 
     def create_completion_manual(self, i):
-        rule = f"(assert (! (= "
+        rule = f"(assert (= "
         if len(self._rules_id) > 0:
             if self.head == "bot":
-                return rule + f"true (and {self.rule_completion_manual()})) :named C_{i}))"
-            return rule + f"(< |{self.head}| bot) (or {self.rule_completion_manual()})) :named C_{i}))"
+                return rule + f"true (and {self.rule_completion_manual()})) )"
+            return rule + f"(< |{self.head}| bot) (or {self.rule_completion_manual()})) )"
         else:
-            return rule + f"true (not (< |{self.head}| bot))):named C_{i}))"
+            return rule + f"true (not (< |{self.head}| bot))))"
 
     def rule_completion_manual(self):
         rule = ""
