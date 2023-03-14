@@ -42,7 +42,7 @@ def create_atoms(rules, number):
             head, body = rule[:-1].strip(), None
 
         if (expressions := head_to_bodies.get(head)) is None:
-            head_to_bodies[head] = expressions = Rule(head, number, True)
+            head_to_bodies[head] = expressions = Rule(head, number)
 
         expressions.add_associated_variable(i+1)
 
@@ -54,10 +54,10 @@ def create_atoms(rules, number):
 
             for atom in positive_atoms:
                 if atom not in head_to_bodies.keys():
-                    atom_without_support[atom] = Rule(atom, number, True)
+                    atom_without_support[atom] = Rule(atom, number)
             for atom in negative_atoms:
                 if atom not in head_to_bodies.keys():
-                    atom_without_support[atom] = Rule(atom, number, True)
+                    atom_without_support[atom] = Rule(atom, number)
         else:
             expressions.populate_positive([])
             expressions.populate_negative([])
@@ -87,10 +87,12 @@ def create_rules(head_to_bodies, number, manual):
             variable.update(elem.get_rules_id())
             rules.append(elem.create_association_manual(i))
             rules.append(elem.create_difference_manual(i))
+            rules.append(elem.create_inference_manual(i))
             rules.append(elem.create_completion_manual(i))
         else:
             rules.append(elem.create_association())
             rules.append(elem.create_difference())
+            rules.append(elem.create_inference())
             rules.append(elem.create_completion())
         i += 1
 

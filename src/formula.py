@@ -73,6 +73,25 @@ class Rule:
                                     (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
+    def create_inference(self):
+        temp_and = []
+        if self.head == "bot":
+            return (Bool(True))
+        for positive, negative in zip(self._positive_body, self._negative_body):
+            if len(positive) + len(negative) == 0:
+                temp_and.append(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
+            else:
+                temp_and.append(Implies(And(self.rule_inference(positive,negative)),LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
+        return And(temp_and)
+
+    def rule_inference(self, pos, neg):
+        temp = []
+        for atom in pos:
+            temp.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
+        for atom in neg:
+            temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+        return temp
+
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "bot":
@@ -137,6 +156,24 @@ class Rule:
             rule += f"(=> (< |{pos[0]}| |{self.head}|) (and (< |{pos[0]}| bot) (< |{self.head}| bot)))"
         return rule + ")"
 
+    def create_inference_manual(self, i):
+        if self.head == "bot":
+            return ""
+        rule = ""
+        for positive, negative in zip(self._positive_body, self._negative_body):
+            if len(positive) + len(negative) == 0:
+                rule += f"assert(< {self.head} bot)\n"
+            else:
+                rule += f"assert(=> (and {self.rule_inference_manual(positive, negative)}) (< {self.head} bot))\n"
+        return rule[:-1]
+
+    def rule_inference_manual(self, pos, neg):
+        rule = ""
+        for atom in pos:
+            rule += f"(< {atom} bot) "
+        for atom in neg:
+            rule += f"(not (< {atom} bot)) "
+        return rule
 
     def create_completion_manual(self, i):
         rule = f"(assert (= "
