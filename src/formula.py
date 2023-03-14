@@ -1,4 +1,4 @@
-from pysmt.shortcuts import Symbol, Bool, And, Or, Implies, Iff, GT, LT, LE, GE, Not, Equals, Int, Real
+from pysmt.shortcuts import Symbol, Bool, And, Or, Implies, GT, LT, LE, GE, Not, Equals, Int, Real
 from pysmt.typing import INT, REAL, BOOL
 types = [INT, REAL]
 
@@ -37,11 +37,11 @@ class Rule:
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
             if self.head == "bot":
-                total_and.append(Iff(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
+                total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
             else:
                 if len(positive) == 0 and len(negative) == 0:
                     continue
-                total_and.append(Iff(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
+                total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
         return And(total_and)
 
     def rule_associated(self, pos, neg):
@@ -98,7 +98,7 @@ class Rule:
                 return And(self.rule_completion())
             related = self.rule_completion()
             if len(related) != 0:
-                return Iff(LT(Symbol(self.head, self.type),Symbol("bot", self.type)), Or(related))
+                return Implies(LT(Symbol(self.head, self.type),Symbol("bot", self.type)), Or(related))
             else:
                 return And([])
         else:
@@ -121,11 +121,11 @@ class Rule:
             rule = "(assert ("
             if self.head == "bot":
                 used_var.append(rule_id)
-                rule += f"= {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
+                rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
             else:
                 if len(positive) + len(negative) == 0:
                     continue
-                rule += f"= {rule_id} {self.rule_associated_manual(positive, negative)})"
+                rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
             final_rule += rule +")\n"
             j += 1
         return final_rule[:-1]
@@ -182,7 +182,7 @@ class Rule:
         return rule
 
     def create_completion_manual(self, i):
-        rule = f"(assert (= "
+        rule = f"(assert (=> "
         if len(self._rules_id) > 0:
             if self.head == "bot":
                 return rule + f"true (and {self.rule_completion_manual()})) )"
