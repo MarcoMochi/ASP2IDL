@@ -168,26 +168,26 @@ class Rule:
         rule = ""
         for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) + len(negative) == 0:
-                rule += f"(assert(< {self.head} bot))\n"
+                rule += f"(assert(< |{self.head}| bot))\n"
             else:
-                rule += f"(assert(=> (and {self.rule_inference_manual(positive, negative)}) (< {self.head} bot)))\n"
+                rule += f"(assert(=> (and {self.rule_inference_manual(positive, negative)}) (< |{self.head}| bot)))\n"
         return rule[:-1]
 
     def rule_inference_manual(self, pos, neg):
         rule = ""
         for atom in pos:
-            rule += f"(< {atom} bot) "
+            rule += f"(< |{atom}| bot) "
         for atom in neg:
-            rule += f"(not (< {atom} bot)) "
+            rule += f"(not (< |{atom}| bot)) "
         return rule
 
     def create_completion_manual(self, i):
         rule = f"(assert (=> "
         if len(self._rules_id) > 0:
-            if self.head == "bot":
-                return rule + f"true (and {self.rule_completion_manual()})) )"
             related = self.rule_completion_manual()
             if related != "":
+                if self.head == "bot":
+                    return f"(assert (and {self.rule_completion_manual()}))"
                 return rule + f"(< |{self.head}| bot) (or {related})) )"
             else:
                 return ""
@@ -197,6 +197,6 @@ class Rule:
     def rule_completion_manual(self):
         rule = ""
         for i, atom in enumerate(self._rules_id):
-            if len(self._positive_body[i]) > 0 and len(self._negative_body[i]) > 0:
+            if len(self._positive_body[i]) + len(self._negative_body[i]) > 0:
                 rule += f"{atom} "
         return rule

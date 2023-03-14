@@ -111,8 +111,6 @@ def create_rules(head_to_bodies, number, manual):
 
         return definitions + rules
 
-    for r in rules:
-        print(r)
     return And(rules)
 
 def extract_atoms(model, number):
