@@ -35,6 +35,37 @@ def analyze_yices(folder_name, name=""):
     result = pd.DataFrame.from_dict(list_stats)
     result.to_excel(f"{folder_name}analisi_yices_{name}.xlsx", engine='xlsxwriter')
 
+def analyze_yices_1(folder_name, name=""):
+    list_stats = []
+    timeout_problems = []
+    files = os.listdir(folder_name)
+    files.sort()
+
+    for path in files:
+        # check if current path is a file
+        if os.path.isfile(os.path.join(folder_name, path)) and path.endswith('.asp'):
+            stats = reader(folder_name + path)
+            if stats[0] != "sat" and stats[0] != "unsat":
+                list_stats.append({"Instance": str(path), "State": "Time-out"})
+                continue
+            status = stats[0]
+            temp_dict = {"Instance": str(path), "State": status}
+            for elem in stats[1:-1]:
+                try:
+                    key, value = elem.split((":"))
+                    key = key.rstrip()
+                    value = value.rstrip()
+                    value = value.split("s")[0]
+                    temp_dict[key.capitalize()] = float(value)
+                except:
+                    print(elem)
+                    pass
+            list_stats.append(temp_dict)
+
+
+    result = pd.DataFrame.from_dict(list_stats)
+    result.to_excel(f"{folder_name}analisi_yices_{name}.xlsx", engine='xlsxwriter')
+
 def extractAnswerSet(folder_name):
     files = os.listdir(folder_name)
     files.sort()
@@ -123,12 +154,15 @@ def main():
                 analyze_yices(folder_name, name)
             elif smt_solver.lower() == "clingo":
                 analyze_clingo(folder_name, name)
+            elif smt_solver.lower() =="yices_old":
+                analyze_yices_1(folder_name, name)
         except:
             if smt_solver.lower() == "yices":
                 analyze_yices(folder_name)
             elif smt_solver.lower() == "clingo":
                 analyze_clingo(folder_name)
-
+            elif smt_solver.lower() =="yices_old":
+                analyze_yices_1(folder_name)
 
 
 if __name__ == '__main__':
