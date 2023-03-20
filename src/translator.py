@@ -88,11 +88,13 @@ def create_rules(head_to_bodies, number, manual):
             rules.append(elem.create_association_manual(i))
             rules.append(elem.create_difference_manual(i))
             rules.append(elem.create_inference_manual(i))
+            rules.append(elem.create_optimization_manual_one(i))
             rules.append(elem.create_completion_manual(i))
         else:
             rules.append(elem.create_association())
             rules.append(elem.create_difference())
             rules.append(elem.create_inference())
+            rules.append(elem.create_optimization_one())
             rules.append(elem.create_completion())
         i += 1
 
