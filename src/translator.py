@@ -41,7 +41,7 @@ def check_recursive(rule_from_body, new_rule):
             if atom == new_rule.get_head():
                 rule_from_body.add_recursive(new_rule.get_head())
                 new_rule.add_recursive(rule_from_body.get_head())
-    
+
     return temp_atoms
 
 def create_atoms(rules, number):
@@ -123,7 +123,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
             if opt1:
                 rules.append(elem.create_optimization_one())
             if opt2:
-                rules.append(elem.create_optimization_manual_one(i))
+                rules.append(elem.create_optimization_two())
             rules.append(elem.create_completion())
         i += 1
 

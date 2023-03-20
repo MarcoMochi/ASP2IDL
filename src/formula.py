@@ -100,10 +100,8 @@ class Rule:
 
     def create_optimization_one(self):
         temp_and = []
-        if self.head == "bot":
-            return (Bool(True))
-        if len(self._recursive) == 0:
-            return (Bool(True))
+        if self.head == "bot" or len(self._recursive) == 0:
+            return Bool(True)
         print(f"NUOVA OPT CON {self.head}")
         temp_and.append(self.rule_optimization_one(self._recursive))
         return And(temp_and)
@@ -114,6 +112,21 @@ class Rule:
         for atom in atoms:
             temp.append(Implies(And(Not(LT(Symbol(atom, self.type),Symbol(self.head, self.type))),LT(Symbol(atom, self.type),Symbol("bot", self.type))),
                                 LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
+        return And(temp)
+
+    def create_optimization_two(self):
+        temp_and = []
+        if self.head == "bot" or len(self._recursive) == 0:
+            return Bool(True)
+        print(f"SECONDA OPT CON {self.head}")
+        temp_and.append(self.rule_optimization_two(self._recursive))
+        return And(temp_and)
+
+    def rule_optimization_two(self, atoms):
+        # A > B -> not B > A
+        temp = []
+        for atom in atoms:
+            temp.append(Implies(LT(Symbol(atom, self.type),Symbol(self.head, self.type)),Not(LT(Symbol(self.head, self.type),Symbol(atom, self.type)))))
         return And(temp)
 
     def create_completion(self):
