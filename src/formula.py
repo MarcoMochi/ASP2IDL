@@ -92,6 +92,26 @@ class Rule:
             temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
+    def create_optimization_one(self):
+        temp_and = []
+        if self.head == "bot":
+            return (Bool(True))
+
+        for positive, negative in zip(self._positive_body, self._negative_body):
+            if len(positive) > 0:
+                temp_and.append(self.rule_optimization_one(positive))
+            if len(negative) > 0:
+                temp_and.append(self.rule_optimization_one(negative))
+        return And(temp_and)
+
+    def rule_optimization_one(self, atoms):
+        # ¬A > B ∧ ⊥ > B → ⊥ > A.
+        temp = []
+        for atom in atoms:
+            temp.append(Implies(And(Not(LT(Symbol(atom, self.type),Symbol(self.head, self.type))),LT(Symbol(atom, self.type),Symbol("bot", self.type))),
+                                LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
+        return And(temp)
+
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "bot":
