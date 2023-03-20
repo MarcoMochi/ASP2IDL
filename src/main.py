@@ -10,11 +10,27 @@ import sys
 
 
 problem = "GraphColoringManuale/"
+
+
+def get_optimizations_params(opt1, opt2):
+    opt1, opt2 = False
+    if opt1 == "true":
+        opt1 = True
+    if opt2 == "true":
+        opt2 = True
+
+    return opt1, opt2
+
 def parser(values):
     manual = values[0].lower()
     number = values[1].lower()
     solve = values[2].lower()
     printer = values[3].lower()
+    opt1, opt2 = False
+    try:
+        opt1, opt2 = get_optimizations_params(values[4], values[5])
+    except:
+        pass
     logic = None
 
     if manual == "true":
@@ -58,7 +74,7 @@ def main():
         print(f"Iniziata traduzione in SMT del file {name_file}")
         translations = create_atoms(lines, number)
         print("TROVATE TRANSAZIONI")
-        model = create_rules(translations, number, manual)
+        model = create_rules(translations, number, manual, opt1, opt2)
         print("TROVATO MODELLO")
 
 
