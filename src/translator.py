@@ -28,9 +28,26 @@ def rewrite_disj(lines):
 
     return new_lines
 
+
+def check_recursive(rule_from_body, new_rule):
+    temp_atoms = []
+    for positives in rule_from_body.get_positives():
+        for atom in positives:
+            if atom == new_rule.get_head():
+                rule_from_body.add_recursive(new_rule.get_head())
+                new_rule.add_recursive(rule_from_body.get_head())
+    for negatives in rule_from_body.get_negatives():
+        for atom in negatives:
+            if atom == new_rule.get_head():
+                rule_from_body.add_recursive(new_rule.get_head())
+                new_rule.add_recursive(rule_from_body.get_head())
+    
+    return temp_atoms
+
 def create_atoms(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
+    recursive_couples = []
     for i, rule in enumerate(rules):
         try:
             if rule.startswith(":-"):
@@ -52,11 +69,17 @@ def create_atoms(rules, number):
             expressions.populate_positive(positive_atoms)
             expressions.populate_negative(negative_atoms)
 
+            ## If no rules with head as atoms of body, add to no support
+            ## Otherwise, check if recursive with head
             for atom in positive_atoms:
-                if atom not in head_to_bodies.keys():
+                if (temp_atom := head_to_bodies.get(atom)) is not None:
+                    check_recursive(temp_atom, expressions)
+                else:
                     atom_without_support[atom] = Rule(atom, number)
             for atom in negative_atoms:
-                if atom not in head_to_bodies.keys():
+                if (temp_atom := head_to_bodies.get(atom)) is not None:
+                    check_recursive(temp_atom, expressions)
+                else:
                     atom_without_support[atom] = Rule(atom, number)
         else:
             expressions.populate_positive([])
