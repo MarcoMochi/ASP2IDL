@@ -1,24 +1,26 @@
-from pysmt.shortcuts import Symbol, Bool, And, Or, Implies, GT, LT, LE, GE, Not, Equals, Int, Real
+from pysmt.shortcuts import Symbol, Bool, And, Or, Implies, GT, LT, Not
 from pysmt.typing import INT, REAL, BOOL
+
 types = [INT, REAL]
 
+
 class Rule:
-    def __init__(self, head, type, ottimization=False):
-        if type not in types:
+    def __init__(self, head, type_, optimization=False):
+        if type_ not in types:
             raise ValueError(f"error: type must be one of {types}")
         self.head = head
         self._recursive = []
         self._positive_body = []
         self._negative_body = []
         self._rules_id = []
-        self.type = type
-        self.ott = ottimization
+        self.type = type_
+        self.ott = optimization
 
     def get_head(self):
         return self.head
 
-    def add_associated_variable(self, id):
-        self._rules_id.append(f"W{str(id)}")
+    def add_associated_variable(self, id_):
+        self._rules_id.append(f"W{str(id_)}")
 
     def populate_positive(self, body):
         self._positive_body.append(body)
@@ -38,7 +40,7 @@ class Rule:
     def add_recursive(self, atom):
         self._recursive.append(atom)
 
-    #Creation of rules using pysmt library
+    # Creation of rules using pysmt library
     def create_association(self):
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
@@ -55,7 +57,7 @@ class Rule:
         for atom in pos:
             temp_and.append(GT(Symbol(self.head, self.type), Symbol(atom, self.type)))
         for atom in neg:
-            temp_and.append(Not(LT(Symbol(atom, self.type),Symbol("bot", self.type))))
+            temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
     def create_difference(self):
@@ -73,21 +75,24 @@ class Rule:
         temp_and = []
         if len(pos) > 1 or len(neg) > 0 or not self.ott:
             for atom in pos:
-                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)), LT(Symbol(atom, self.type),Symbol("bot", self.type))))
+                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
+                                        LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         else:
             temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(pos[0], self.type)),
-                                    (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+                                    (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),
+                                     LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
     def create_inference(self):
         temp_and = []
         if self.head == "bot":
-            return (Bool(True))
+            return Bool(True)
         for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) + len(negative) == 0:
                 temp_and.append(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
             else:
-                temp_and.append(Implies(And(self.rule_inference(positive,negative)),LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
+                temp_and.append(Implies(And(self.rule_inference(positive, negative)),
+                                        LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
     def rule_inference(self, pos, neg):
@@ -102,7 +107,6 @@ class Rule:
         temp_and = []
         if self.head == "bot" or len(self._recursive) == 0:
             return Bool(True)
-        print(f"NUOVA OPT CON {self.head}")
         temp_and.append(self.rule_optimization_one(self._recursive))
         return And(temp_and)
 
@@ -110,7 +114,8 @@ class Rule:
         # ¬A > B ∧ ⊥ > B → ⊥ > A.
         temp = []
         for atom in atoms:
-            temp.append(Implies(And(Not(LT(Symbol(atom, self.type),Symbol(self.head, self.type))),LT(Symbol(atom, self.type),Symbol("bot", self.type))),
+            temp.append(Implies(And(Not(LT(Symbol(atom, self.type), Symbol(self.head, self.type))),
+                                    LT(Symbol(atom, self.type), Symbol("bot", self.type))),
                                 LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
         return And(temp)
 
@@ -118,7 +123,6 @@ class Rule:
         temp_and = []
         if self.head == "bot" or len(self._recursive) == 0:
             return Bool(True)
-        print(f"SECONDA OPT CON {self.head}")
         temp_and.append(self.rule_optimization_two(self._recursive))
         return And(temp_and)
 
@@ -126,7 +130,8 @@ class Rule:
         # A > B -> not B > A
         temp = []
         for atom in atoms:
-            temp.append(Implies(LT(Symbol(atom, self.type),Symbol(self.head, self.type)),Not(LT(Symbol(self.head, self.type),Symbol(atom, self.type)))))
+            temp.append(Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                Not(LT(Symbol(self.head, self.type), Symbol(atom, self.type)))))
         return And(temp)
 
     def create_completion(self):
@@ -135,11 +140,11 @@ class Rule:
                 return And(self.rule_completion())
             related = self.rule_completion()
             if len(related) != 0:
-                return Implies(LT(Symbol(self.head, self.type),Symbol("bot", self.type)), Or(related))
+                return Implies(LT(Symbol(self.head, self.type), Symbol("bot", self.type)), Or(related))
             else:
                 return And([])
         else:
-            return Not(LT(Symbol(self.head, self.type),Symbol("bot", self.type)))
+            return Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
 
     def rule_completion(self):
         temp = []
@@ -149,7 +154,7 @@ class Rule:
             temp.append(Symbol(atom, BOOL))
         return temp
 
-    ##Creation of rules manuall
+    # Creation of rules manual
     def create_association_manual(self, i):
         final_rule = ""
         used_var = []
@@ -163,7 +168,7 @@ class Rule:
                 if len(positive) + len(negative) == 0:
                     continue
                 rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
-            final_rule += rule +")\n"
+            final_rule += rule + ")\n"
             j += 1
         return final_rule[:-1]
 
@@ -179,7 +184,7 @@ class Rule:
             return rule + ")"
         return rule
 
-    def create_difference_manual(self,i):
+    def create_difference_manual(self, i):
         rule = ""
         for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) > 0:
