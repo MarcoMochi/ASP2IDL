@@ -1,11 +1,13 @@
 from formula import Rule
 import re
 import fileinput
-from pysmt.shortcuts import Symbol, Solver, And, Equals, Int, Real, get_env, is_sat, get_model, GE, write_smtlib, simplify
+from pysmt.shortcuts import Symbol, Solver, And, Equals, Int, Real, get_env, is_sat, get_model, GE, write_smtlib, \
+    simplify
 from pysmt.typing import INT, REAL
 from pysmt.logics import QF_IDL, QF_RDL, QF_UFIDL
 import sys, errno
 import z3
+
 
 def reader(file):
     lines = []
@@ -44,6 +46,7 @@ def check_recursive(rule_from_body, new_rule):
 
     return temp_atoms
 
+
 def create_atoms(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
@@ -61,11 +64,12 @@ def create_atoms(rules, number):
         if (expressions := head_to_bodies.get(head)) is None:
             head_to_bodies[head] = expressions = Rule(head, number)
 
-        expressions.add_associated_variable(i+1)
+        expressions.add_associated_variable(i + 1)
 
         if body != None:
             positive_atoms = [atom for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if "not " not in atom]
-            negative_atoms = [atom.replace("not ", "") for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if "not " in atom]
+            negative_atoms = [atom.replace("not ", "") for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if
+                              "not " in atom]
             expressions.populate_positive(positive_atoms)
             expressions.populate_negative(negative_atoms)
 
@@ -96,6 +100,7 @@ def create_atoms(rules, number):
 
     return head_to_bodies
 
+
 def create_rules(head_to_bodies, number, manual, opt1, opt2):
     rules = []
     definitions = []
@@ -117,14 +122,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
                 rules.append(elem.create_optimization_manual_one(i))
             rules.append(elem.create_completion_manual(i))
         else:
-            rules.append(elem.create_association())
-            rules.append(elem.create_difference())
-            rules.append(elem.create_inference())
-            if opt1:
-                rules.append(elem.create_optimization_one())
-            if opt2:
-                rules.append(elem.create_optimization_two())
-            rules.append(elem.create_completion())
+            rules.extend(elem.create_rules(opt1, opt2))
         i += 1
 
     if manual:
@@ -144,6 +142,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
 
     return And(rules)
 
+
 def extract_atoms(model, number):
     answer_set = []
 
@@ -155,6 +154,7 @@ def extract_atoms(model, number):
         if k[1].constant_value() < limit and k[1].constant_value() > 0:
             answer_set.append(str(k[0]))
     return answer_set
+
 
 def extractAnswerSet(name_file):
     answer_set = []
@@ -189,9 +189,11 @@ def call_solver_selected(model, number):
         print(s.is_sat(model))
         return extract_atoms(s.get_model(), number)
 
+
 def call_solver(model, number):
     if is_sat(model, logic=QF_IDL):
-        return extract_atoms(get_model(model,logic=QF_IDL), number)
+        return extract_atoms(get_model(model, logic=QF_IDL), number)
+
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
@@ -201,9 +203,9 @@ def writer(model, name_file, output_path, printer, manual, number):
             write_smtlib(model, output_path + name_file, QF_IDL)
         with open(output_path + name_file, "r") as r:
             text = r.read()
-        #text = text.replace("set-logic QF_LIA", "set-logic QF_IDL")
-        #text = text.replace("declare-fun", "declare-const")
-        #text = text.replace("() Int", "Int")
+        # text = text.replace("set-logic QF_LIA", "set-logic QF_IDL")
+        # text = text.replace("declare-fun", "declare-const")
+        # text = text.replace("() Int", "Int")
         text += "(get-model)"
         with open(output_path + name_file, "w") as w:
             w.write(text)
@@ -219,6 +221,7 @@ def writer(model, name_file, output_path, printer, manual, number):
                     w.write(f"{rule}\n")
             w.write(f"(check-sat)\n")
             w.write(f"(get-model)\n")
+
 
 def simplify_smt2_file(file_path):
     tactics = ("simplify", "solve-eqs", "propagate-values", "simplify")
