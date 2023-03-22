@@ -4,9 +4,9 @@ import re
 import pandas as pd
 from translator import reader
 
+
 def analyze_yices(folder_name, name=""):
     list_stats = []
-    timeout_problems = []
     files = os.listdir(folder_name)
     files.sort()
 
@@ -31,13 +31,12 @@ def analyze_yices(folder_name, name=""):
                     pass
             list_stats.append(temp_dict)
 
-
     result = pd.DataFrame.from_dict(list_stats)
     result.to_excel(f"{folder_name}analisi_yices_{name}.xlsx", engine='xlsxwriter')
 
+
 def analyze_yices_1(folder_name, name=""):
     list_stats = []
-    timeout_problems = []
     files = os.listdir(folder_name)
     files.sort()
 
@@ -62,11 +61,11 @@ def analyze_yices_1(folder_name, name=""):
                     pass
             list_stats.append(temp_dict)
 
-
     result = pd.DataFrame.from_dict(list_stats)
     result.to_excel(f"{folder_name}analisi_yices_{name}.xlsx", engine='xlsxwriter')
 
-def extractAnswerSet(folder_name):
+
+def extract_answer_set(folder_name):
     files = os.listdir(folder_name)
     files.sort()
     for path in files:
@@ -105,10 +104,9 @@ def extractAnswerSet(folder_name):
 
     return answer_set
 
+
 def analyze_clingo(folder_name):
     list_stats = []
-    timeout_problems = []
-
     files = os.listdir(folder_name)
     files.sort()
     for path in files:
@@ -137,14 +135,13 @@ def analyze_clingo(folder_name):
             list_stats.append(temp_dict)
 
         result = pd.DataFrame.from_dict(list_stats)
-        print(list_stats)
         result.to_excel(folder_name + "analisi_clingo.xlsx", engine='xlsxwriter')
 
 
 def main():
     folder_name = sys.argv[1]
     if len(sys.argv[1:]) == 1:
-        print(extractAnswerSet(folder_name))
+        print(extract_answer_set(folder_name))
     else:
         smt_solver = sys.argv[2]
 
@@ -167,4 +164,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-    #test_smt()

@@ -1,12 +1,8 @@
 from formula import Rule
 import re
-import fileinput
-from pysmt.shortcuts import Symbol, Solver, And, Equals, Int, Real, get_env, is_sat, get_model, GE, write_smtlib, \
-    simplify
-from pysmt.typing import INT, REAL
-from pysmt.logics import QF_IDL, QF_RDL, QF_UFIDL
-import sys, errno
-import z3
+from pysmt.shortcuts import And, write_smtlib
+from pysmt.typing import REAL
+from pysmt.logics import QF_IDL, QF_RDL
 
 
 def reader(file):
@@ -50,7 +46,6 @@ def check_recursive(rule_from_body, new_rule):
 def create_atoms(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
-    recursive_couples = []
     for i, rule in enumerate(rules):
         try:
             if rule.startswith(":-"):
@@ -66,15 +61,15 @@ def create_atoms(rules, number):
 
         expressions.add_associated_variable(i + 1)
 
-        if body != None:
+        if body is not None:
             positive_atoms = [atom for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if "not " not in atom]
             negative_atoms = [atom.replace("not ", "") for atom in re.split(r',\s*(?![^()]*\))', body[:-1]) if
                               "not " in atom]
             expressions.populate_positive(positive_atoms)
             expressions.populate_negative(negative_atoms)
 
-            ## If no rules with head as atoms of body, add to no support
-            ## Otherwise, check if recursive with head
+            # If no rules with head as atoms of body, add to no support
+            # Otherwise, check if recursive with head
             for atom in positive_atoms:
                 if (temp_atom := head_to_bodies.get(atom)) is not None:
                     check_recursive(temp_atom, expressions)
@@ -143,58 +138,6 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
     return And(rules)
 
 
-def extract_atoms(model, number):
-    answer_set = []
-
-    if number == REAL:
-        limit = float(model[Symbol("F", REAL)].constant_value())
-    elif number == INT:
-        limit = int(model[Symbol("F", INT)].constant_value())
-    for k in model:
-        if k[1].constant_value() < limit and k[1].constant_value() > 0:
-            answer_set.append(str(k[0]))
-    return answer_set
-
-
-def extractAnswerSet(name_file):
-    answer_set = []
-    rules = reader(name_file)
-    if rules[0] != "sat":
-        return print("Unsat problem")
-    try:
-        rules = rules[:rules.index("(")]
-    except:
-        rules = rules
-
-    if "F" in rules[1]:
-        limit = int(re.search(r"\d+", rules[1]).group(0))
-        print(limit)
-    for elem in rules[3:]:
-        if int(re.search(r"\d+", elem.split("|")[2]).group(0)) < limit:
-            atom = elem.split("|")[1]
-            answer_set.append(atom)
-
-    return answer_set
-
-
-def call_solver_selected(model, number):
-    name = "mathsat"  # Note: The API version is called 'msat'
-    path = ["/Users/marco/Desktop/mathsat-5.6.9-osx/bin/mathsat"]  # Path to the solver
-    logics = [QF_UFIDL]  # Some of the supported logics  # Some of the supported logics
-
-    env = get_env()
-    env.factory.add_generic_solver(name, path, logics)
-
-    with Solver(name=name, logic=QF_IDL) as s:
-        print(s.is_sat(model))
-        return extract_atoms(s.get_model(), number)
-
-
-def call_solver(model, number):
-    if is_sat(model, logic=QF_IDL):
-        return extract_atoms(get_model(model, logic=QF_IDL), number)
-
-
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
         if number == REAL:
@@ -203,9 +146,6 @@ def writer(model, name_file, output_path, printer, manual, number):
             write_smtlib(model, output_path + name_file, QF_IDL)
         with open(output_path + name_file, "r") as r:
             text = r.read()
-        # text = text.replace("set-logic QF_LIA", "set-logic QF_IDL")
-        # text = text.replace("declare-fun", "declare-const")
-        # text = text.replace("() Int", "Int")
         text += "(get-model)"
         with open(output_path + name_file, "w") as w:
             w.write(text)
@@ -221,15 +161,3 @@ def writer(model, name_file, output_path, printer, manual, number):
                     w.write(f"{rule}\n")
             w.write(f"(check-sat)\n")
             w.write(f"(get-model)\n")
-
-
-def simplify_smt2_file(file_path):
-    tactics = ("simplify", "solve-eqs", "propagate-values", "simplify")
-    query = z3.parse_smt2_file(file_path)
-    goal = z3.Goal()
-    goal.add(query)
-    simplified = z3.Then(*tactics)(goal).as_expr()
-    solver = z3.SolverFor("QF_IDL")
-    solver.add(simplified)
-    with open("prova_simpl.asp", "w") as writer:
-        writer.write(solver.sexpr())
