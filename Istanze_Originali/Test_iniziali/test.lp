@@ -1,4 +1,4 @@
-f :- a.
-a :- not b.
-c :- not d.
-e.
+a :- b.
+c :- a.
+b :- c.
+{b}.

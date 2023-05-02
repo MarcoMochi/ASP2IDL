@@ -10,7 +10,8 @@ def reader(file):
     with open(file, "r") as r:
         lines = [line.strip() for line in r.readlines()]
 
-    return rewrite_disj(lines)
+    return lines
+    #return rewrite_disj(lines)
 
 
 def rewrite_disj(lines):
@@ -43,7 +44,49 @@ def check_recursive(rule_from_body, new_rule):
     return temp_atoms
 
 
+def create_disj_rules(values):
+    pass
+
+
 def create_atoms(rules, number):
+    head_to_bodies = {}
+    print(rules)
+    for i, rule in enumerate(rules):
+        print(rule)
+        values = rule.split(" ")
+        if values[0] != "0":
+            continue
+
+        # Se la riga rappresenta una regola, vediamo gli elementi:
+        n_heads = int(values[2])
+        if n_heads > 1:
+            create_disj_rules(values[2:])
+            continue
+
+        elif n_heads == 0:
+            head = "bot"
+        elif n_heads == 1:
+            head = values[3]
+
+        positive_atoms = []
+        negative_atoms = []
+        if values[4] == "0":
+            if int(values[5]) > 0:
+                for x in values[5:]:
+                    if x.contains("-"):
+                        negative_atoms.append(x.replace("-", ""))
+                    else:
+                        positive_atoms.append(x)
+
+        if (expressions := head_to_bodies.get(head)) is None:
+            head_to_bodies[head] = expressions = Rule(head, number)
+
+        expressions.add_associated_variable(i + 1)
+        expressions.populate_positive(positive_atoms)
+        expressions.populate_negative(negative_atoms)
+
+
+def create_atoms_old(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
     for i, rule in enumerate(rules):
