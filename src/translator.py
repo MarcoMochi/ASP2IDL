@@ -11,7 +11,7 @@ def reader(file):
         lines = [line.strip() for line in r.readlines()]
 
     return lines
-    #return rewrite_disj(lines)
+    # return rewrite_disj(lines)
 
 
 def rewrite_disj(lines):
@@ -44,46 +44,70 @@ def check_recursive(rule_from_body, new_rule):
     return temp_atoms
 
 
-def create_disj_rules(values):
-    pass
+def get_body_atoms(values, negative_atoms=[]):
+    positive_atoms = []
+    if int(values[0]) > 0:
+        for x in values[1:]:
+            # TODO: Check why gives error. (Contains is a problem, but shouldn't be here)
+            if x.contains("-"):
+                negative_atoms.append(x.replace("-", ""))
+            else:
+                positive_atoms.append(x)
+
+    return positive_atoms, negative_atoms
+
+
+def update_dict(head, number, i, pos, neg, head_to_bodies):
+    if (expressions := head_to_bodies.get(head)) is None:
+        head_to_bodies[head] = expressions = Rule(head, number)
+
+    expressions.add_associated_variable(i + 1)
+    expressions.populate_positive(pos)
+    expressions.populate_negative(neg)
+
+
+def create_disj_rules(n_heads, values, i, number):
+    heads_id = values[:n_heads]
+    for pos, id in enumerate(heads_id):
+        positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [id])
+        update_dict(id, number, i+pos+1, positive_atoms, negative_atoms)
 
 
 def create_atoms(rules, number):
     head_to_bodies = {}
     print(rules)
+    # Consideriamo solo le righe che rappresentano una regola
+    rules = [rule for rule in rules if rule[0] == "1"]
+    n_disj = 0
     for i, rule in enumerate(rules):
+        index = 1
         print(rule)
         values = rule.split(" ")
-        if values[0] != "0":
-            continue
+        assert values[index] == "0", "Second value in the aspif syntax must be equal to 0, since choice rules are not " \
+                                     "supported at the moment "
 
-        # Se la riga rappresenta una regola, vediamo gli elementi:
-        n_heads = int(values[2])
+        index += 1
+        n_heads = int(values[index])
         if n_heads > 1:
-            create_disj_rules(values[2:])
+            # Aggiungiamo a n_disj il numero di righe in più considerato, così da assegnare la variabile corretta
+            n_disj += n_heads - 1
+            create_disj_rules(n_heads, values[index:], i, number)
             continue
 
         elif n_heads == 0:
             head = "bot"
         elif n_heads == 1:
-            head = values[3]
+            index += 1
+            head = values[index]
 
-        positive_atoms = []
-        negative_atoms = []
-        if values[4] == "0":
-            if int(values[5]) > 0:
-                for x in values[5:]:
-                    if x.contains("-"):
-                        negative_atoms.append(x.replace("-", ""))
-                    else:
-                        positive_atoms.append(x)
+        index += 1
+        assert values[index] == "0", "First value for the body in the ASPIF syntax must be equal to 0, since weighted" \
+                                     "bodies are not supported at the moment"
 
-        if (expressions := head_to_bodies.get(head)) is None:
-            head_to_bodies[head] = expressions = Rule(head, number)
+        index += 1
+        positive_atoms, negative_atoms = get_body_atoms(values[index:])
 
-        expressions.add_associated_variable(i + 1)
-        expressions.populate_positive(positive_atoms)
-        expressions.populate_negative(negative_atoms)
+        update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
 
 
 def create_atoms_old(rules, number):
