@@ -44,12 +44,12 @@ def check_recursive(rule_from_body, new_rule):
     return temp_atoms
 
 
-def get_body_atoms(values, negative_atoms=[]):
-    positive_atoms = []
+def get_body_atoms(values, positive_atoms, negative_atoms):
+
     if int(values[0]) > 0:
         for x in values[1:]:
             # TODO: Check why gives error. (Contains is a problem, but shouldn't be here)
-            if x.contains("-"):
+            if "-" in x:
                 negative_atoms.append(x.replace("-", ""))
             else:
                 positive_atoms.append(x)
@@ -66,11 +66,11 @@ def update_dict(head, number, i, pos, neg, head_to_bodies):
     expressions.populate_negative(neg)
 
 
-def create_disj_rules(n_heads, values, i, number):
+def create_disj_rules(n_heads, values, i, number, head_to_bodies):
     heads_id = values[:n_heads]
     for pos, id in enumerate(heads_id):
-        positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [id])
-        update_dict(id, number, i+pos+1, positive_atoms, negative_atoms)
+        positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [], [x for x in heads_id if x != id])
+        update_dict(id, number, i+pos+1, positive_atoms, negative_atoms, head_to_bodies)
 
 
 def create_atoms(rules, number):
@@ -90,8 +90,8 @@ def create_atoms(rules, number):
         n_heads = int(values[index])
         if n_heads > 1:
             # Aggiungiamo a n_disj il numero di righe in più considerato, così da assegnare la variabile corretta
+            create_disj_rules(n_heads, values[index+1:], i, number, head_to_bodies)
             n_disj += n_heads - 1
-            create_disj_rules(n_heads, values[index:], i, number)
             continue
 
         elif n_heads == 0:
@@ -105,9 +105,12 @@ def create_atoms(rules, number):
                                      "bodies are not supported at the moment"
 
         index += 1
-        positive_atoms, negative_atoms = get_body_atoms(values[index:])
+        positive_atoms, negative_atoms = [], []
+        positive_atoms, negative_atoms = get_body_atoms(values[index:], positive_atoms, negative_atoms)
 
         update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
+
+    return head_to_bodies
 
 
 def create_atoms_old(rules, number):
@@ -202,6 +205,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
 
         return definitions + rules
 
+    print(rules)
     return And(rules)
 
 
