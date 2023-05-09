@@ -153,7 +153,7 @@ class Rule:
             rules.append(self.create_association(rule_id, positive, negative))
             rules.append(self.create_difference(positive, negative))
             rules.append(self.create_inference(positive, negative))
-            rules.append(self.create_optimization(opt1, opt2))
+        rules.append(self.create_optimization(opt1, opt2))
         rules.append(self.create_completion())
         return rules
 
