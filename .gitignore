@@ -1,6 +1,7 @@
-
-src/.DS_Store
-*.pyc
-*.pyc
-./checkers
-./Traduzione
+.DS_Store
+Traduzione/*
+Results/*
+LP2DIFF/*
+checkers
+checkers/*
+Statistica/
