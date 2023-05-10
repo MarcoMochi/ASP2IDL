@@ -10,10 +10,23 @@ def reader(file):
     with open(file, "r") as r:
         lines = [line.strip() for line in r.readlines()]
 
-    return rewrite_disj(lines)
-
+    return lines
+    # return rewrite_disj(lines)
 
 def rewrite_disj(lines):
+    new_lines = []
+    for line in lines:
+        values = line.split(" ")
+        if values[0] != "1":
+            continue
+        #if int(values[2]) > 1:
+            #for i in range(int(values[2])):
+
+        #else:
+            #new_lines.append(line)
+
+
+def rewrite_disj_old(lines):
     new_lines = []
     for line in lines:
         if ";" in line:
@@ -43,7 +56,76 @@ def check_recursive(rule_from_body, new_rule):
     return temp_atoms
 
 
+def get_body_atoms(values, positive_atoms, negative_atoms):
+
+    if int(values[0]) > 0:
+        for x in values[1:]:
+            if "-" in x:
+                negative_atoms.append(x.replace("-", ""))
+            else:
+                positive_atoms.append(x)
+
+    return positive_atoms, negative_atoms
+
+
+def update_dict(head, number, i, pos, neg, head_to_bodies):
+    if (expressions := head_to_bodies.get(head)) is None:
+        head_to_bodies[head] = expressions = Rule(head, number)
+    elif head == "bot":
+        print(f"Per {head} abbiamo più regole")
+        print(f"Positives: {expressions.get_positives()}")
+
+    expressions.add_associated_variable(i + 1)
+    expressions.populate_positive(pos)
+    expressions.populate_negative(neg)
+
+
+def create_disj_rules(n_heads, values, i, number, head_to_bodies):
+    heads_id = values[:n_heads]
+    for pos, id in enumerate(heads_id):
+        positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [], [x for x in heads_id if x != id])
+        update_dict(id, number, i+pos, positive_atoms, negative_atoms, head_to_bodies)
+
+
 def create_atoms(rules, number):
+    head_to_bodies = {}
+    # Consideriamo solo le righe che rappresentano una regola
+    rules = [rule for rule in rules if rule[0] == "1"]
+    n_disj = 0
+    for i, rule in enumerate(rules):
+        index = 1
+        values = rule.split(" ")
+        assert values[index] == "0", "Second value in the aspif syntax must be equal to 0, since choice rules are not " \
+                                     "supported at the moment "
+
+        index += 1
+        n_heads = int(values[index])
+        if n_heads > 1:
+            # Aggiungiamo a n_disj il numero di righe in più considerato, così da assegnare la variabile corretta
+            create_disj_rules(n_heads, values[index+1:], i+n_disj, number, head_to_bodies)
+            n_disj += n_heads - 1
+            continue
+
+        elif n_heads == 0:
+            head = "bot"
+        elif n_heads == 1:
+            index += 1
+            head = values[index]
+
+        index += 1
+        assert values[index] == "0", "First value for the body in the ASPIF syntax must be equal to 0, since weighted" \
+                                     "bodies are not supported at the moment"
+
+        index += 1
+        positive_atoms, negative_atoms = [], []
+        positive_atoms, negative_atoms = get_body_atoms(values[index:], positive_atoms, negative_atoms)
+
+        update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
+
+    return head_to_bodies
+
+
+def create_atoms_old(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
     for i, rule in enumerate(rules):
@@ -93,6 +175,7 @@ def create_atoms(rules, number):
     for key, rule in atom_without_support.items():
         head_to_bodies[key] = rule
 
+
     return head_to_bodies
 
 
@@ -134,6 +217,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
             definitions.append(f"(declare-fun {atom} () Bool)")
 
         return definitions + rules
+
 
     return And(rules)
 
