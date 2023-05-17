@@ -56,7 +56,6 @@ def check_recursive(rule_from_body, new_rule):
     return temp_atoms
 
 
-<<<<<<< HEAD
 def get_body_atoms(values, positive_atoms, negative_atoms):
 
     if int(values[0]) > 0:
@@ -87,13 +86,11 @@ def create_disj_rules(n_heads, values, i, number, head_to_bodies):
         positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [], [x for x in heads_id if x != id])
         update_dict(id, number, i+pos, positive_atoms, negative_atoms, head_to_bodies)
 
-
-=======
->>>>>>> main
 def create_atoms(rules, number):
     head_to_bodies = {}
     # Consideriamo solo le righe che rappresentano una regola
     rules = [rule for rule in rules if rule[0] == "1"]
+    facts = [rule for rule in rules if rule[0] == "4" and rule[-1] == "0"]
     n_disj = 0
     for i, rule in enumerate(rules):
         index = 1
@@ -125,7 +122,7 @@ def create_atoms(rules, number):
 
         update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
 
-    return head_to_bodies
+    return head_to_bodies, facts
 
 
 def create_atoms_old(rules, number):
@@ -220,10 +217,6 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
             definitions.append(f"(declare-fun {atom} () Bool)")
 
         return definitions + rules
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 
     return And(rules)
 
