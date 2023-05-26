@@ -5,28 +5,17 @@ from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
 
 
-def reader(file):
+def reader(file, aspif=False):
     lines = []
     with open(file, "r") as r:
         lines = [line.strip() for line in r.readlines()]
 
-    return lines
-    # return rewrite_disj(lines)
+    if aspif:
+        return lines
+    return rewrite_disj(lines)
+
 
 def rewrite_disj(lines):
-    new_lines = []
-    for line in lines:
-        values = line.split(" ")
-        if values[0] != "1":
-            continue
-        #if int(values[2]) > 1:
-            #for i in range(int(values[2])):
-
-        #else:
-            #new_lines.append(line)
-
-
-def rewrite_disj_old(lines):
     new_lines = []
     for line in lines:
         if ";" in line:
@@ -86,7 +75,14 @@ def create_disj_rules(n_heads, values, i, number, head_to_bodies):
         positive_atoms, negative_atoms = get_body_atoms(values[n_heads:], [], [x for x in heads_id if x != id])
         update_dict(id, number, i+pos, positive_atoms, negative_atoms, head_to_bodies)
 
-def create_atoms(rules, number):
+
+def create_atoms(rules, number, aspif=False):
+    if aspif:
+        return create_atoms_aspif(rules, number)
+    return  create_atoms_text(rules, number)
+
+
+def create_atoms_aspif(rules, number):
     head_to_bodies = {}
     # Consideriamo solo le righe che rappresentano una regola
     rules = [rule for rule in rules if rule[0] == "1"]
@@ -125,7 +121,7 @@ def create_atoms(rules, number):
     return head_to_bodies, facts
 
 
-def create_atoms_old(rules, number):
+def create_atoms_text(rules, number):
     head_to_bodies = {}
     atom_without_support = {}
     for i, rule in enumerate(rules):
@@ -174,7 +170,6 @@ def create_atoms_old(rules, number):
 
     for key, rule in atom_without_support.items():
         head_to_bodies[key] = rule
-
 
     return head_to_bodies
 
