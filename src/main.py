@@ -53,7 +53,10 @@ def main():
     manual, number, logic, printer, opt1, opt2 = parser(sys.argv[3:])
 
     print(f"Iniziata traduzione in SMT del file {name_file}")
-    translations = create_atoms(lines, number)
+    translations, facts = create_atoms(lines, number)
+    # TODO: Decide how to handle facts, now they are saved (taking the name from the aspif
+    # output (format: 4 1 atom 0) but not used. An idea could be to add them to the model as < bot, Otherwise
+    # could be added to the obtained model in a pipeline.
     print("TROVATE TRANSAZIONI")
     model = create_rules(translations, number, manual, opt1, opt2)
     print("TROVATO MODELLO")
