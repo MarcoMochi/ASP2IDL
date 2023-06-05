@@ -1,6 +1,8 @@
+import os.path
+
 import pysmt.logics
 from pysmt.typing import INT, REAL
-from translator import reader, create_atoms, create_rules, writer
+from translator import reader, create_atoms, create_rules, writer, get_sccs
 import sys
 import argparse
 
@@ -15,12 +17,14 @@ def parse_value(number):
 def main(args):
 
     path = args.file
+    assert os.path.isfile(path), "Setted file is not existing"
     name_file = path.split("/")[-1]
     output_path, printer = args.printer, args.printer is not None
     logic, number = parse_value(args.number)
 
-    print(f"Iniziata traduzione in SMT del file {name_file}")
+    print(f"Started translation of: {name_file}")
     if args.aspif:
+        #sccs = get_sccs(path)
         lines = reader(path, True)
         translations, facts = create_atoms(lines, number, True)
     else:
@@ -49,7 +53,8 @@ if __name__ == '__main__':
                         action="store_true")
     parser.add_argument("-n", "--number", help="decide if the numbers should be integers or reals [int, real]",
                         choices=["int", "real"], default="int")
-    parser.add_argument("--aspif", help="define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-aspif", "--aspif", help="define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-sccs", "--sccs", help="path of the obtained reified file using --reify-sccs")
     args = parser.parse_args()
 
     sys.exit(main(args))

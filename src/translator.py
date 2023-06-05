@@ -3,6 +3,10 @@ import re
 from pysmt.shortcuts import And, write_smtlib
 from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
+from clingo import Application, clingo_main, Control
+
+def get_sccs(file):
+    pass
 
 
 def reader(file, aspif=False):
@@ -60,9 +64,6 @@ def get_body_atoms(values, positive_atoms, negative_atoms):
 def update_dict(head, number, i, pos, neg, head_to_bodies):
     if (expressions := head_to_bodies.get(head)) is None:
         head_to_bodies[head] = expressions = Rule(head, number)
-    elif head == "bot":
-        print(f"Per {head} abbiamo più regole")
-        print(f"Positives: {expressions.get_positives()}")
 
     expressions.add_associated_variable(i + 1)
     expressions.populate_positive(pos)
@@ -79,7 +80,7 @@ def create_disj_rules(n_heads, values, i, number, head_to_bodies):
 def create_atoms(rules, number, aspif=False):
     if aspif:
         return create_atoms_aspif(rules, number)
-    return  create_atoms_text(rules, number)
+    return create_atoms_text(rules, number)
 
 
 def create_atoms_aspif(rules, number):
