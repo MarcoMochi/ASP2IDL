@@ -1,6 +1,6 @@
 from formula import Rule
 import re
-from pysmt.shortcuts import And, write_smtlib
+from pysmt.shortcuts import And, write_smtlib, to_smtlib
 from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
 from clingo import Application, clingo_main, Control
@@ -40,11 +40,11 @@ def check_recursive(rule_from_body, new_rule):
             if atom == new_rule.get_head():
                 rule_from_body.add_recursive(new_rule.get_head())
                 new_rule.add_recursive(rule_from_body.get_head())
-    for negatives in rule_from_body.get_negatives():
-        for atom in negatives:
-            if atom == new_rule.get_head():
-                rule_from_body.add_recursive(new_rule.get_head())
-                new_rule.add_recursive(rule_from_body.get_head())
+    #for negatives in rule_from_body.get_negatives():
+    #    for atom in negatives:
+    #        if atom == new_rule.get_head():
+    #            rule_from_body.add_recursive(new_rule.get_head())
+    #            new_rule.add_recursive(rule_from_body.get_head())
 
     return temp_atoms
 
@@ -156,6 +156,7 @@ def create_atoms_text(rules, number):
                     atom_without_support[atom] = Rule(atom, number)
             for atom in negative_atoms:
                 if (temp_atom := head_to_bodies.get(atom)) is not None:
+                    pass
                     check_recursive(temp_atom, expressions)
                 else:
                     atom_without_support[atom] = Rule(atom, number)
@@ -219,6 +220,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
+        print(model.serialize())
         if number == REAL:
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:

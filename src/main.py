@@ -17,15 +17,17 @@ def parse_value(number):
 def main(args):
 
     path = args.file
-    assert os.path.isfile(path), "Setted file is not existing"
+    assert os.path.isfile(path), "Input file is not existing"
     name_file = path.split("/")[-1]
     output_path, printer = args.printer, args.printer is not None
     logic, number = parse_value(args.number)
 
     print(f"Started translation of: {name_file}")
     if args.aspif:
-        #sccs = get_sccs(path)
         lines = reader(path, True)
+        if args.sccs:
+            assert os.path.isfile(args.sccs), "Setted sccs file is not existing"
+            sccs = get_sccs(path)
         translations, facts = create_atoms(lines, number, True)
     else:
         lines = reader(path)
@@ -35,7 +37,7 @@ def main(args):
     # output (format: 4 1 atom 0) but not used. An idea could be to add them to the model as < bot, Otherwise
     # could be added to the obtained model in a pipeline.
     print("TROVATE TRANSAZIONI")
-    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2)
+    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, )
     print("TROVATO MODELLO")
 
     writer(model, name_file, output_path, printer, args.manual, number)

@@ -41,6 +41,9 @@ class Rule:
         self._recursive.append(atom)
 
     # Creation of rules using pysmt library
+
+    # Create formulas like:
+    # W_n -> H > B+ and not (B- < bot)
     def create_association(self, rule_id, positive, negative):
         total_and = []
         if self.head == "bot":
@@ -58,6 +61,9 @@ class Rule:
             temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
+    # Create formulas like:
+    # H > B+ -> B+ < bot
+    # Se un solo atomo positivo: H > B+ -> B+ < bot and H < bot
     def create_difference(self, positive, negative):
         total_and = []
         if len(positive) > 0:
@@ -80,6 +86,9 @@ class Rule:
                                      LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
+    # Create formulas like:
+    # If sum(B+,B-) == 0 creates H < bot
+    # Otherwise B+ < bot and not (B- < bot) -> H < bot
     def create_inference(self, positive, negative):
         temp_and = []
         if self.head == "bot":
@@ -99,6 +108,7 @@ class Rule:
             temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
+    # Create two optimization clauses
     def create_optimization(self, opt1, opt2):
         temp_and = []
         if self.head == "bot" or len(self._recursive) == 0:
@@ -127,6 +137,9 @@ class Rule:
         return Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
                        Not(LT(Symbol(self.head, self.type), Symbol(atom, self.type))))
 
+    # Create formulas like:
+    # if bot is head: W_i and ... and W_n
+    # Otherwise: H < bot -> W_i and .. and W_n
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "bot":
