@@ -18,6 +18,8 @@ def main(args):
 
     path = args.file
     assert os.path.isfile(path), "Input file is not existing"
+    if args.sccs:
+        assert os.path.isfile(args.sccs), "Setted sccs file is not existing"
     name_file = path.split("/")[-1]
     output_path, printer = args.printer, args.printer is not None
     logic, number = parse_value(args.number)
@@ -25,19 +27,20 @@ def main(args):
     print(f"Started translation of: {name_file}")
     if args.aspif:
         lines = reader(path, True)
-        if args.sccs:
-            assert os.path.isfile(args.sccs), "Setted sccs file is not existing"
-            sccs = get_sccs(path)
         translations, facts = create_atoms(lines, number, True)
+        if args.sccs or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.sccs, translations, True)
     else:
         lines = reader(path)
         translations = create_atoms(lines, number)
+        if args.sccs or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.sccs, translations)
 
     # TODO: Decide how to handle facts, now they are saved (taking the name from the aspif
     # output (format: 4 1 atom 0) but not used. An idea could be to add them to the model as < bot, Otherwise
     # could be added to the obtained model in a pipeline.
     print("TROVATE TRANSAZIONI")
-    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, )
+    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.sccs)
     print("TROVATO MODELLO")
 
     writer(model, name_file, output_path, printer, args.manual, number)

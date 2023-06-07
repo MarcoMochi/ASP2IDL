@@ -1,3 +1,5 @@
+import sys
+
 from formula import Rule
 import re
 from pysmt.shortcuts import And, write_smtlib, to_smtlib
@@ -5,8 +7,31 @@ from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
 from clingo import Application, clingo_main, Control
 
-def get_sccs(file):
-    pass
+def get_sccs(file, head_to_atoms, aspif=False):
+    involved_atoms = {}
+    atom_sccs = {}
+    with open(file) as f:
+        whole = f.read()
+        values = [x.strip() for x in whole.split("scc_atom")  if len(x)>0]
+        for x in values:
+            id = re.search("\d+", x.split(",")[0]).group(0)
+            if aspif:
+                atom = re.search("\d+", x.split(",")[1]).group(0)
+            else:
+                atom = x.split(",", 2)[-1][:-1]
+            try:
+                involved_atoms[id].append(atom)
+            except:
+                involved_atoms[id] = [atom]
+
+    for id_scc, atoms in involved_atoms.items():
+        for i, atom in enumerate(atoms):
+            try:
+                head_to_atoms[atom].replace_recursive(atoms[:i]+atoms[i+1:])
+            except:
+                sys.exit("Recursive atoms not created")
+
+    return head_to_atoms
 
 
 def reader(file, aspif=False):
@@ -176,7 +201,7 @@ def create_atoms_text(rules, number):
     return head_to_bodies
 
 
-def create_rules(head_to_bodies, number, manual, opt1, opt2):
+def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
     rules = []
     definitions = []
     atoms = set()
@@ -197,7 +222,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
                 rules.append(elem.create_optimization_manual_one(i))
             rules.append(elem.create_completion_manual(i))
         else:
-            rules.extend(elem.create_rules(opt1, opt2))
+            rules.extend(elem.create_rules(opt1, opt2, sccs))
         i += 1
 
     if manual:
@@ -220,7 +245,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
-        print(model.serialize())
+        #print(model.serialize())
         if number == REAL:
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:
