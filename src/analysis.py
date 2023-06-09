@@ -68,6 +68,7 @@ def analyze_yices_1(folder_name, name=""):
 def extract_answer_set(folder_name):
     files = os.listdir(folder_name)
     files.sort()
+    aspif = True
     for path in files:
         if os.path.isfile(os.path.join(folder_name, path)) and path.endswith('.asp'):
             assignments = {}
@@ -84,11 +85,19 @@ def extract_answer_set(folder_name):
 
             for elem in rules[1:]:
                 try:
-                    atom = elem.split("|")[1]
-                    if "-" in elem.split("|")[2]:
-                        assignments[atom] = -int(re.search(r"\d+", elem.split("|")[2]).group(0))
+                    if aspif:
+                        if "W" not in elem:
+                            atom,value = re.findall("\d+", elem)
+                            if "-" in elem:
+                                assignments[atom] = -int(value)
+                            else:
+                                assignments[atom] = int(value)
                     else:
-                        assignments[atom] = int(re.search(r"\d+", elem.split("|")[2]).group(0))
+                        atom = elem.split("|")[1]
+                        if "-" in elem.split("|")[2]:
+                            assignments[atom] = -int(re.search(r"\d+", elem.split("|")[2]).group(0))
+                        else:
+                            assignments[atom] = int(re.search(r"\d+", elem.split("|")[2]).group(0))
                 except:
                     if " bot " in elem:
                         atom = "bot"
@@ -98,9 +107,29 @@ def extract_answer_set(folder_name):
                 if value < limit:
                     answer_set.append(key)
 
+            new_path = folder_name.replace("Results", "Istanze_Originali")
+            new_path = new_path.replace("+scc", "")
+            atom_to_id = {}
+            facts = []
+            with open(new_path + path, "r") as r:
+                    atoms = [x.strip() for x in r.readlines() if x.startswith("4")]
+                    for atom in atoms:
+                        values = atom.split(" ")
+                        if int(values[-1]) == 0:
+                            facts.append(values[-2])
+                        else:
+                            atom_to_id[values[-1]] = values[-3]
             with open(folder_name + "Answer_Set/" + path, "w") as w:
                 for elem in answer_set:
+                    try:
+                        w.write(f"{atom_to_id[elem]}. ")
+                    except:
+                        pass
+                for elem in facts:
                     w.write(f"{elem}. ")
+
+
+
 
     return answer_set
 

@@ -40,7 +40,12 @@ class Rule:
     def add_recursive(self, atom):
         self._recursive.append(atom)
 
+    def replace_recursive(self, atoms):
+        self._recursive = atoms
     # Creation of rules using pysmt library
+
+    # Create formulas like:
+    # W_n -> H > B+ and not (B- < bot)
     def create_association(self, rule_id, positive, negative):
         total_and = []
         if self.head == "bot":
@@ -58,6 +63,29 @@ class Rule:
             temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
+    def create_association_scc(self, rule_id, positive, negative):
+        total_and = []
+        if self.head == "bot":
+            total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated_scc(positive, negative))))
+        else:
+            if len(positive) > 0 or len(negative) > 0:
+                total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated_scc(positive, negative)))
+        return And(total_and)
+
+    def rule_associated_scc(self, pos, neg):
+        temp_and = []
+        for atom in pos:
+            if atom in self._recursive:
+                temp_and.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
+            else:
+                temp_and.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
+        for atom in neg:
+            temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+        return And(temp_and)
+
+    # Create formulas like:
+    # H > B+ -> B+ < bot
+    # Se un solo atomo positivo: H > B+ -> B+ < bot and H < bot
     def create_difference(self, positive, negative):
         total_and = []
         if len(positive) > 0:
@@ -80,6 +108,16 @@ class Rule:
                                      LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
+    def create_difference_sccs(self):
+        temp_and = []
+        for atom in self._recursive:
+            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
+                                    LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+        return And(temp_and)
+
+    # Create formulas like:
+    # If sum(B+,B-) == 0 creates H < bot
+    # Otherwise B+ < bot and not (B- < bot) -> H < bot
     def create_inference(self, positive, negative):
         temp_and = []
         if self.head == "bot":
@@ -99,6 +137,7 @@ class Rule:
             temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
+    # Create two optimization clauses
     def create_optimization(self, opt1, opt2):
         temp_and = []
         if self.head == "bot" or len(self._recursive) == 0:
@@ -127,6 +166,9 @@ class Rule:
         return Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
                        Not(LT(Symbol(self.head, self.type), Symbol(atom, self.type))))
 
+    # Create formulas like:
+    # if bot is head: W_i and ... and W_n
+    # Otherwise: H < bot -> W_i or .. or W_n
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "bot":
@@ -147,13 +189,18 @@ class Rule:
             temp.append(Symbol(atom, BOOL))
         return temp
 
-    def create_rules(self, opt1, opt2):
+    def create_rules(self, opt1, opt2, sccs):
         rules = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rules.append(self.create_association(rule_id, positive, negative))
-            rules.append(self.create_difference(positive, negative))
+            if sccs is None:
+                rules.append(self.create_association(rule_id, positive, negative))
+                rules.append(self.create_difference(positive, negative))
+            else:
+                rules.append(self.create_association_scc(rule_id, positive, negative))
+                if len(self._recursive) > 0:
+                    rules.append(self.create_difference_sccs())
             rules.append(self.create_inference(positive, negative))
-        rules.append(self.create_optimization(opt1, opt2))
+        #rules.append(self.create_optimization(opt1, opt2))
         rules.append(self.create_completion())
         return rules
 

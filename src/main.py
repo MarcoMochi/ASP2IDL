@@ -1,6 +1,8 @@
+import os.path
+
 import pysmt.logics
 from pysmt.typing import INT, REAL
-from translator import reader, create_atoms, create_rules, writer
+from translator import reader, create_atoms, create_rules, writer, get_sccs
 import sys
 import argparse
 
@@ -15,23 +17,30 @@ def parse_value(number):
 def main(args):
 
     path = args.file
+    assert os.path.isfile(path), "Input file is not existing"
+    if args.sccs:
+        assert os.path.isfile(args.sccs), "Setted sccs file is not existing"
     name_file = path.split("/")[-1]
     output_path, printer = args.printer, args.printer is not None
     logic, number = parse_value(args.number)
 
-    print(f"Iniziata traduzione in SMT del file {name_file}")
+    print(f"Started translation of: {name_file}")
     if args.aspif:
         lines = reader(path, True)
         translations, facts = create_atoms(lines, number, True)
+        if args.sccs or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.sccs, translations, True)
     else:
         lines = reader(path)
         translations = create_atoms(lines, number)
+        if args.sccs or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.sccs, translations)
 
     # TODO: Decide how to handle facts, now they are saved (taking the name from the aspif
     # output (format: 4 1 atom 0) but not used. An idea could be to add them to the model as < bot, Otherwise
     # could be added to the obtained model in a pipeline.
     print("TROVATE TRANSAZIONI")
-    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2)
+    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.sccs)
     print("TROVATO MODELLO")
 
     writer(model, name_file, output_path, printer, args.manual, number)
@@ -49,7 +58,8 @@ if __name__ == '__main__':
                         action="store_true")
     parser.add_argument("-n", "--number", help="decide if the numbers should be integers or reals [int, real]",
                         choices=["int", "real"], default="int")
-    parser.add_argument("--aspif", help="define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-aspif", "--aspif", help="define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-sccs", "--sccs", help="path of the obtained reified file using --reify-sccs")
     args = parser.parse_args()
 
     sys.exit(main(args))

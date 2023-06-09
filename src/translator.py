@@ -1,8 +1,37 @@
+import sys
+
 from formula import Rule
 import re
-from pysmt.shortcuts import And, write_smtlib
+from pysmt.shortcuts import And, write_smtlib, to_smtlib
 from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
+from clingo import Application, clingo_main, Control
+
+def get_sccs(file, head_to_atoms, aspif=False):
+    involved_atoms = {}
+    atom_sccs = {}
+    with open(file) as f:
+        whole = f.read()
+        values = [x.strip() for x in whole.split("scc_atom")  if len(x)>0]
+        for x in values:
+            id = re.search("\d+", x.split(",")[0]).group(0)
+            if aspif:
+                atom = re.search("\d+", x.split(",")[1]).group(0)
+            else:
+                atom = x.split(",", 2)[-1][:-1]
+            try:
+                involved_atoms[id].append(atom)
+            except:
+                involved_atoms[id] = [atom]
+
+    for id_scc, atoms in involved_atoms.items():
+        for i, atom in enumerate(atoms):
+            if atom not in head_to_atoms.keys():
+                print(f"{atom} not in Rules")
+            else:
+                head_to_atoms[atom].replace_recursive(atoms[:i] + atoms[i + 1:])
+
+    return head_to_atoms
 
 
 
@@ -37,11 +66,11 @@ def check_recursive(rule_from_body, new_rule):
             if atom == new_rule.get_head():
                 rule_from_body.add_recursive(new_rule.get_head())
                 new_rule.add_recursive(rule_from_body.get_head())
-    for negatives in rule_from_body.get_negatives():
-        for atom in negatives:
-            if atom == new_rule.get_head():
-                rule_from_body.add_recursive(new_rule.get_head())
-                new_rule.add_recursive(rule_from_body.get_head())
+    #for negatives in rule_from_body.get_negatives():
+    #    for atom in negatives:
+    #        if atom == new_rule.get_head():
+    #            rule_from_body.add_recursive(new_rule.get_head())
+    #            new_rule.add_recursive(rule_from_body.get_head())
 
     return temp_atoms
 
@@ -61,9 +90,6 @@ def get_body_atoms(values, positive_atoms, negative_atoms):
 def update_dict(head, number, i, pos, neg, head_to_bodies):
     if (expressions := head_to_bodies.get(head)) is None:
         head_to_bodies[head] = expressions = Rule(head, number)
-    elif head == "bot":
-        print(f"Per {head} abbiamo più regole")
-        print(f"Positives: {expressions.get_positives()}")
 
     expressions.add_associated_variable(i + 1)
     expressions.populate_positive(pos)
@@ -80,7 +106,7 @@ def create_disj_rules(n_heads, values, i, number, head_to_bodies):
 def create_atoms(rules, number, aspif=False):
     if aspif:
         return create_atoms_aspif(rules, number)
-    return  create_atoms_text(rules, number)
+    return create_atoms_text(rules, number)
 
 
 def create_atoms_aspif(rules, number):
@@ -156,6 +182,7 @@ def create_atoms_text(rules, number):
                     atom_without_support[atom] = Rule(atom, number)
             for atom in negative_atoms:
                 if (temp_atom := head_to_bodies.get(atom)) is not None:
+                    pass
                     check_recursive(temp_atom, expressions)
                 else:
                     atom_without_support[atom] = Rule(atom, number)
@@ -175,7 +202,7 @@ def create_atoms_text(rules, number):
     return head_to_bodies
 
 
-def create_rules(head_to_bodies, number, manual, opt1, opt2):
+def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
     rules = []
     definitions = []
     atoms = set()
@@ -196,7 +223,7 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
                 rules.append(elem.create_optimization_manual_one(i))
             rules.append(elem.create_completion_manual(i))
         else:
-            rules.extend(elem.create_rules(opt1, opt2))
+            rules.extend(elem.create_rules(opt1, opt2, sccs))
         i += 1
 
     if manual:
@@ -219,7 +246,6 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2):
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
-
         if number == REAL:
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:
