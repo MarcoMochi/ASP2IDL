@@ -66,16 +66,19 @@ class Rule:
     def create_association_scc(self, rule_id, positive, negative):
         total_and = []
         if self.head == "bot":
-            total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
+            total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated_scc(positive, negative))))
         else:
             if len(positive) > 0 or len(negative) > 0:
-                total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
+                total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated_scc(positive, negative)))
         return And(total_and)
 
     def rule_associated_scc(self, pos, neg):
         temp_and = []
         for atom in pos:
-            temp_and.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
+            if atom in self._recursive:
+                temp_and.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
+            else:
+                temp_and.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
         for atom in neg:
             temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
@@ -193,9 +196,8 @@ class Rule:
                 rules.append(self.create_association(rule_id, positive, negative))
                 rules.append(self.create_difference(positive, negative))
             else:
-                rules.append(self.create_association(rule_id, positive, negative))
+                rules.append(self.create_association_scc(rule_id, positive, negative))
                 if len(self._recursive) > 0:
-                    print("Creo recursive")
                     rules.append(self.create_difference_sccs())
             rules.append(self.create_inference(positive, negative))
         #rules.append(self.create_optimization(opt1, opt2))
