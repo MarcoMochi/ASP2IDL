@@ -26,10 +26,10 @@ def get_sccs(file, head_to_atoms, aspif=False):
 
     for id_scc, atoms in involved_atoms.items():
         for i, atom in enumerate(atoms):
-            try:
-                head_to_atoms[atom].replace_recursive(atoms[:i]+atoms[i+1:])
-            except:
-                sys.exit("Recursive atoms not created")
+            if atom not in head_to_atoms.keys():
+                print(f"{atom} not in Rules")
+            else:
+                head_to_atoms[atom].replace_recursive(atoms[:i] + atoms[i + 1:])
 
     return head_to_atoms
 
