@@ -34,6 +34,7 @@ def get_sccs(file, head_to_atoms, aspif=False):
     return head_to_atoms
 
 
+
 def reader(file, aspif=False):
     lines = []
     with open(file, "r") as r:
@@ -245,7 +246,6 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
 
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
-        #print(model.serialize())
         if number == REAL:
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:
@@ -263,6 +263,7 @@ def writer(model, name_file, output_path, printer, manual, number):
             else:
                 w.write(f"(set-logic QF_IDL)\n")
             for rule in model:
+                print(rule)
                 if rule != "":
                     w.write(f"{rule}\n")
             w.write(f"(check-sat)\n")
