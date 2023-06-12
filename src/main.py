@@ -5,7 +5,9 @@ from pysmt.typing import INT, REAL
 from translator import reader, create_atoms, create_rules, writer, get_sccs
 import sys
 import argparse
+import time
 
+starting_time, ending_time = None, None
 
 def parse_value(number):
     if number == "real":
@@ -16,50 +18,53 @@ def parse_value(number):
 
 def main(args):
 
-    path = args.file
+    path = args.input
     assert os.path.isfile(path), "Input file is not existing"
-    if args.sccs:
-        assert os.path.isfile(args.sccs), "Setted sccs file is not existing"
+    if args.scc:
+        assert os.path.isfile(args.scc), "Setted sccs file is not existing"
     name_file = path.split("/")[-1]
-    output_path, printer = args.printer, args.printer is not None
+    output_path, printer = args.output, args.output is not None
     logic, number = parse_value(args.number)
 
     print(f"Started translation of: {name_file}")
     if args.aspif:
         lines = reader(path, True)
         translations, facts = create_atoms(lines, number, True)
-        if args.sccs or args.optimization1 or args.optimization2:
-            translations = get_sccs(args.sccs, translations, True)
+        if args.scc or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.scc, translations, True)
     else:
         lines = reader(path)
         translations = create_atoms(lines, number)
-        if args.sccs or args.optimization1 or args.optimization2:
-            translations = get_sccs(args.sccs, translations)
-
-    # TODO: Decide how to handle facts, now they are saved (taking the name from the aspif
-    # output (format: 4 1 atom 0) but not used. An idea could be to add them to the model as < bot, Otherwise
-    # could be added to the obtained model in a pipeline.
-    print("TROVATE TRANSAZIONI")
-    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.sccs)
-    print("TROVATO MODELLO")
-
+        if args.scc or args.optimization1 or args.optimization2:
+            translations = get_sccs(args.scc, translations)
+    print("Getting the translations")
+    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
     writer(model, name_file, output_path, printer, args.manual, number)
+    print("Created Models")
+    ending_time = time.time()
+    print(f"Tempo totale richiesto: {ending_time-starting_time}s")
 
 
 if __name__ == '__main__':
+    starting_time = time.time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", help="path of the file to be translated", required=True)
-    parser.add_argument("-m", "--manual", help="activate if the translation should be done using the pysmt library"
+    parser.add_argument("-i", "--input", help="Path of the file to be translated", required=True)
+    parser.add_argument("-m", "--manual", help="Activate if the translation should be done using the pysmt library"
                                                "or manually", action="store_true")
-    parser.add_argument("-p", "--printer", help="decide if the obtained translation should be printed or not and specify the path")
-    parser.add_argument("-o1", "--optimization1", help="decide if the optimization for recursive rules should be used or not",
+    parser.add_argument("-o", "--output", help="Decide if the obtained translation should be printed or not "
+                                               "and specify the path")
+    parser.add_argument("-opt1", "--optimization1", help="decide if the optimization for recursive rules should"
+                                                         " be used or not",
                         action="store_true")
-    parser.add_argument("-o2", "--optimization2", help="decide if the optimization for recursive rules should be used or not",
-                        action="store_true")
-    parser.add_argument("-n", "--number", help="decide if the numbers should be integers or reals [int, real]",
+    parser.add_argument("-opt2", "--optimization2", help="Decide if the optimization for recursive rules should "
+                                                         "be used or not", action="store_true")
+    parser.add_argument("-n", "--number", help="Decide if the numbers should be integers or reals [int, real]",
                         choices=["int", "real"], default="int")
-    parser.add_argument("-aspif", "--aspif", help="define the input format of the model as aspif",  action="store_true")
-    parser.add_argument("-sccs", "--sccs", help="path of the obtained reified file using --reify-sccs")
+    parser.add_argument("-aspif", "--aspif", help="Define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-scc", "--scc", help="Path of the obtained reified file using --reify-sccs")
+    parser.add_argument("-fp", "--fullpipe", help="Set if you want the tool to take care of the grounding and scc "
+                                                   "founding. Require input and encoding")
+    parser.add_argument("-e", "--encoding", help="Path of the file to be used as econding. Required for full-pipe.")
     args = parser.parse_args()
 
     sys.exit(main(args))
