@@ -1,10 +1,13 @@
 import sys
 
+import pysmt.shortcuts
+
 from formula import Rule
 import re
 from pysmt.shortcuts import And, write_smtlib, to_smtlib
 from pysmt.typing import REAL
 from pysmt.logics import QF_IDL, QF_RDL
+from tqdm import tqdm
 from clingo import Application, clingo_main, Control
 
 def get_sccs(file, head_to_atoms, aspif=False):
@@ -29,7 +32,7 @@ def get_sccs(file, head_to_atoms, aspif=False):
             if atom not in head_to_atoms.keys():
                 print(f"{atom} not in Rules")
             else:
-                head_to_atoms[atom].replace_recursive(atoms[:i] + atoms[i + 1:])
+                head_to_atoms[atom].set_recursive(atoms[:i] + atoms[i + 1:])
 
     return head_to_atoms
 
@@ -208,9 +211,9 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
     atoms = set()
     variable = set()
 
-    i = 0
-    for key, elem in head_to_bodies.items():
 
+    i = 0
+    for key, elem in tqdm(head_to_bodies.items(), total=len(head_to_bodies)):
         if manual:
             atoms.add(key)
             variable.update(elem.get_rules_id())
@@ -223,7 +226,15 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
                 rules.append(elem.create_optimization_manual_one(i))
             rules.append(elem.create_completion_manual(i))
         else:
-            rules.extend(elem.create_rules(opt1, opt2, sccs))
+            if sccs:
+                rules.append(elem.create_association_scc())
+                if len(elem.get_recursive()) > 0:
+                    rules.append(elem.create_difference_sccs())
+            else:
+                rules.append(elem.create_association())
+                rules.append(elem.create_difference())
+            rules.append(elem.create_completion())
+            rules.append(elem.create_inference())
         i += 1
 
     if manual:
@@ -250,11 +261,8 @@ def writer(model, name_file, output_path, printer, manual, number):
             write_smtlib(model, output_path + name_file, QF_RDL)
         else:
             write_smtlib(model, output_path + name_file, QF_IDL)
-        with open(output_path + name_file, "r") as r:
-            text = r.read()
-        text += "(get-model)"
-        with open(output_path + name_file, "w") as w:
-            w.write(text)
+        with open(output_path + name_file, "a") as w:
+            w.write("(get-model)")
 
     elif printer:
         with open(output_path + name_file, "w") as w:
