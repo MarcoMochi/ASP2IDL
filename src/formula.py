@@ -1,13 +1,10 @@
-from pysmt.shortcuts import Symbol, Bool, And, Or, Implies, GT, LT, Not
 from pysmt.typing import INT, REAL, BOOL
-
+from shortcuts import And, Or, Not, Implies, GT, LT, Bool, Symbol
 types = [INT, REAL]
 
 
 class Rule:
     def __init__(self, head, type_, optimization=False):
-        if type_ not in types:
-            raise ValueError(f"error: type must be one of {types}")
         self.head = head
         self._recursive = []
         self._positive_body = []
