@@ -1,5 +1,5 @@
 from pysmt.typing import INT, REAL, BOOL
-from shortcuts import And, Or, Not, Implies, GT, LT, Bool, Symbol
+from shortcuts import And, Or, Not, Implies, GT, LT, Bool, Symbol, SuspendTypeChecking
 types = [INT, REAL]
 
 
@@ -50,39 +50,48 @@ class Rule:
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
             if self.head == "bot":
-                total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
+                with SuspendTypeChecking():
+                    total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated(positive, negative))))
             else:
                 if len(positive) > 0 or len(negative) > 0:
-                    total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
+                    with SuspendTypeChecking():
+                        total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated(positive, negative)))
         return And(total_and)
 
     def rule_associated(self, pos, neg):
         temp_and = []
         for atom in pos:
-            temp_and.append(GT(Symbol(self.head, self.type), Symbol(atom, self.type)))
+            with SuspendTypeChecking():
+                temp_and.append(GT(Symbol(self.head, self.type), Symbol(atom, self.type)))
         for atom in neg:
-            temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+            with SuspendTypeChecking():
+                temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
     def create_association_scc(self):
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
             if self.head == "bot":
-                total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated_scc(positive, negative))))
+                with SuspendTypeChecking():
+                    total_and.append(Implies(Symbol(rule_id, BOOL), Not(self.rule_associated_scc(positive, negative))))
             else:
                 if len(positive) > 0 or len(negative) > 0:
-                    total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated_scc(positive, negative)))
+                    with SuspendTypeChecking():
+                        total_and.append(Implies(Symbol(rule_id, BOOL), self.rule_associated_scc(positive, negative)))
         return And(total_and)
 
     def rule_associated_scc(self, pos, neg):
         temp_and = []
         for atom in pos:
             if atom in self._recursive:
-                temp_and.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
+                with SuspendTypeChecking():
+                    temp_and.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
             else:
-                temp_and.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
+                with SuspendTypeChecking():
+                    temp_and.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
         for atom in neg:
-            temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+            with SuspendTypeChecking():
+                temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
     # Create formulas like:
@@ -95,7 +104,8 @@ class Rule:
                 if self.head == "bot":
                     return And([])
                 else:
-                    total_and.append(self.rule_difference(positive, negative))
+                    with SuspendTypeChecking():
+                        total_and.append(self.rule_difference(positive, negative))
 
         return And(total_and)
 
@@ -103,10 +113,12 @@ class Rule:
         temp_and = []
         if len(pos) > 1 or len(neg) > 0 or not self.ott:
             for atom in pos:
-                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
+                with SuspendTypeChecking():
+                    temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
                                         LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         else:
-            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(pos[0], self.type)),
+            with SuspendTypeChecking():
+                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(pos[0], self.type)),
                                     (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),
                                      LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
@@ -114,7 +126,8 @@ class Rule:
     def create_difference_sccs(self):
         temp_and = []
         for atom in self._recursive:
-            temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
+            with SuspendTypeChecking():
+                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
                                     LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
@@ -127,18 +140,22 @@ class Rule:
             if self.head == "bot":
                 return Bool(True)
             if len(positive) + len(negative) == 0:
-                temp_and.append(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
+                with SuspendTypeChecking():
+                    temp_and.append(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
             else:
-                temp_and.append(Implies(And(self.rule_inference(positive, negative)),
+                with SuspendTypeChecking():
+                    temp_and.append(Implies(And(self.rule_inference(positive, negative)),
                                         LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
     def rule_inference(self, pos, neg):
         temp = []
         for atom in pos:
-            temp.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
+            with SuspendTypeChecking():
+                temp.append(LT(Symbol(atom, self.type), Symbol("bot", self.type)))
         for atom in neg:
-            temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+            with SuspendTypeChecking():
+                temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
     # Create two optimization clauses
@@ -161,13 +178,15 @@ class Rule:
 
     def rule_optimization_one(self, atom):
         # ¬A > B ∧ ⊥ > B → ⊥ > A.
-        return Implies(And(Not(LT(Symbol(atom, self.type), Symbol(self.head, self.type))),
+        with SuspendTypeChecking():
+            return Implies(And(Not(LT(Symbol(atom, self.type), Symbol(self.head, self.type))),
                            LT(Symbol(atom, self.type), Symbol("bot", self.type))),
                        LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
 
     def rule_optimization_two(self, atom):
         # A > B -> not B > A
-        return Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+        with SuspendTypeChecking():
+            return Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
                        Not(LT(Symbol(self.head, self.type), Symbol(atom, self.type))))
 
     # Create formulas like:
@@ -176,14 +195,17 @@ class Rule:
     def create_completion(self):
         if len(self._rules_id) > 0:
             if self.head == "bot":
-                return And(self.rule_completion())
+                with SuspendTypeChecking():
+                    return And(self.rule_completion())
             related = self.rule_completion()
             if len(related) != 0:
-                return Implies(LT(Symbol(self.head, self.type), Symbol("bot", self.type)), Or(related))
+                with SuspendTypeChecking():
+                    return Implies(LT(Symbol(self.head, self.type), Symbol("bot", self.type)), Or(related))
             else:
                 return And([])
         else:
-            return Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
+            with SuspendTypeChecking():
+                return Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))
 
     def rule_completion(self):
         temp = []

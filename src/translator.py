@@ -1,14 +1,10 @@
-import sys
-
-import pysmt.shortcuts
-
 from formula import Rule
 import re
-from pysmt.shortcuts import And, write_smtlib, to_smtlib
+from pysmt.shortcuts import And, write_smtlib
 from pysmt.typing import REAL
-from pysmt.logics import QF_IDL, QF_RDL
 from tqdm import tqdm
-from clingo import Application, clingo_main, Control
+from shortcuts import Bool, SuspendTypeChecking
+
 
 def get_sccs(file, head_to_atoms, aspif=False):
     involved_atoms = {}
@@ -227,14 +223,26 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
             rules.append(elem.create_completion_manual(i))
         else:
             if sccs:
-                rules.append(elem.create_association_scc())
+                temp = elem.create_association_scc()
+                if temp is not Bool(True):
+                    rules.append(temp)
                 if len(elem.get_recursive()) > 0:
-                    rules.append(elem.create_difference_sccs())
+                    temp = elem.create_difference_sccs()
+                    if temp is not Bool(True):
+                        rules.append(temp)
             else:
-                rules.append(elem.create_association())
-                rules.append(elem.create_difference())
-            rules.append(elem.create_completion())
-            rules.append(elem.create_inference())
+                temp = elem.create_association()
+                if temp is not Bool(True):
+                    rules.append(temp)
+                temp = elem.create_difference()
+                if temp is not Bool(True):
+                    rules.append(temp)
+            temp = elem.create_completion()
+            if temp is not Bool(True):
+                rules.append(temp)
+            temp = elem.create_inference()
+            if temp is not Bool(True):
+                rules.append(temp)
         i += 1
 
     if manual:
@@ -258,9 +266,10 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
         if number == REAL:
-            write_smtlib(model, output_path + name_file, QF_RDL)
+            write_smtlib(model, output_path + name_file)
         else:
-            write_smtlib(model, output_path + name_file, QF_IDL)
+            with SuspendTypeChecking():
+                write_smtlib(model, output_path + name_file)
         with open(output_path + name_file, "a") as w:
             w.write("(get-model)")
 

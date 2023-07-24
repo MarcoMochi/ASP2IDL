@@ -9,6 +9,7 @@ import time
 
 starting_time, ending_time = None, None
 
+
 def parse_value(number):
     if number == "real":
         return pysmt.logics.QF_RDL, REAL
@@ -17,7 +18,6 @@ def parse_value(number):
 
 
 def main(args):
-
     path = args.input
     assert os.path.isfile(path), "Input file is not existing"
     if args.scc:
@@ -39,10 +39,10 @@ def main(args):
             translations = get_sccs(args.scc, translations)
     print("Getting the translations")
     model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
-    writer(model, name_file, output_path, printer, args.manual, number)
     print("Created Models")
+    writer(model, name_file, output_path, printer, args.manual, number)
     ending_time = time.time()
-    print(f"Tempo totale richiesto: {ending_time-starting_time}s")
+    print(f"Tempo totale richiesto: {ending_time - starting_time}s")
 
 
 if __name__ == '__main__':
@@ -60,10 +60,10 @@ if __name__ == '__main__':
                                                          "be used or not", action="store_true")
     parser.add_argument("-n", "--number", help="Decide if the numbers should be integers or reals [int, real]",
                         choices=["int", "real"], default="int")
-    parser.add_argument("-aspif", "--aspif", help="Define the input format of the model as aspif",  action="store_true")
+    parser.add_argument("-aspif", "--aspif", help="Define the input format of the model as aspif", action="store_true")
     parser.add_argument("-scc", "--scc", help="Path of the obtained reified file using --reify-sccs")
     parser.add_argument("-fp", "--fullpipe", help="Set if you want the tool to take care of the grounding and scc "
-                                                   "founding. Require input and encoding")
+                                                  "founding. Require input and encoding")
     parser.add_argument("-e", "--encoding", help="Path of the file to be used as econding. Required for full-pipe.")
     args = parser.parse_args()
 
