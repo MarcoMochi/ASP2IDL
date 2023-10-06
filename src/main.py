@@ -3,6 +3,7 @@ import os.path
 import pysmt.logics
 from pysmt.typing import INT, REAL
 from translator import reader, create_atoms, create_rules, writer, get_sccs
+from tester import runner
 import sys
 import argparse
 import time
@@ -18,6 +19,11 @@ def parse_value(number):
 
 
 def main(args):
+    if args.test:
+        logic, number = parse_value(args.number)
+        runner(number, args)
+        return
+
     path = args.input
     assert os.path.isfile(path), "Input file is not existing"
     if args.scc:
@@ -65,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument("-fp", "--fullpipe", help="Set if you want the tool to take care of the grounding and scc "
                                                   "founding. Require input and encoding")
     parser.add_argument("-e", "--encoding", help="Path of the file to be used as econding. Required for full-pipe.")
+    parser.add_argument("-t", "--test", help="Decide if you want to test the translator with the input data", action="store_true")
     args = parser.parse_args()
 
     sys.exit(main(args))
