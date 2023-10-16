@@ -23,6 +23,7 @@ class SuspendTypeChecking(object):
 And = get_env().formula_manager.And
 Or = get_env().formula_manager.Or
 Implies = get_env().formula_manager.Implies
+Eq = get_env().formula_manager.Equals
 GT = get_env().formula_manager.GT
 LT = get_env().formula_manager.LT
 Not = get_env().formula_manager.Not

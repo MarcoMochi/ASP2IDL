@@ -1,3 +1,5 @@
+import pysmt.logics
+
 from formula import Rule
 import re
 from pysmt.shortcuts import And, write_smtlib
@@ -108,8 +110,17 @@ def create_atoms(rules, number, aspif=False):
     return create_atoms_text(rules, number)
 
 
+def check_support(atoms, number, reference, no_support):
+    for atm in atoms:
+        if reference.get(atm) is not None:
+            continue
+        else:
+            no_support[atm] = Rule(atm, number, support=False)
+
+
 def create_atoms_aspif(rules, number):
     head_to_bodies = {}
+    atom_without_support = {}
     # Consideriamo solo le righe che rappresentano una regola
     rules = [rule for rule in rules if rule[0] == "1"]
     facts = [rule for rule in rules if rule[0] == "4" and rule[-1] == "0"]
@@ -142,7 +153,17 @@ def create_atoms_aspif(rules, number):
         positive_atoms, negative_atoms = [], []
         positive_atoms, negative_atoms = get_body_atoms(values[index:], positive_atoms, negative_atoms)
 
+        check_support(positive_atoms, number, head_to_bodies, atom_without_support)
+        check_support(negative_atoms, number, head_to_bodies, atom_without_support)
+
+        if head in atom_without_support.keys():
+            del atom_without_support[head]
+
         update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
+
+    for key, rule in atom_without_support.items():
+        print(key)
+        head_to_bodies[key] = rule
 
     return head_to_bodies, facts
 
@@ -182,7 +203,7 @@ def create_atoms_text(rules, number):
             for atom in negative_atoms:
                 if (temp_atom := head_to_bodies.get(atom)) is not None:
                     pass
-                    check_recursive(temp_atom, expressions)
+                    #check_recursive(temp_atom, expressions)
                 else:
                     atom_without_support[atom] = Rule(atom, number)
         else:
@@ -209,10 +230,19 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
 
 
     i = 0
+
     for key, elem in tqdm(head_to_bodies.items(), total=len(head_to_bodies)):
         if manual:
             atoms.add(key)
             variable.update(elem.get_rules_id())
+            if sccs:
+                temp = elem.create_association_sccs_manual(i)
+                if temp is not Bool(True):
+                    rules.append(temp)
+                if len(elem.get_recursive()) > 0:
+                    temp = elem.create_difference_sccs_manual()
+                    if temp is not Bool(True):
+                        rules.append(temp)
             rules.append(elem.create_association_manual(i))
             rules.append(elem.create_difference_manual(i))
             rules.append(elem.create_inference_manual(i))
@@ -243,6 +273,9 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
             temp = elem.create_inference()
             if temp is not Bool(True):
                 rules.append(temp)
+            if not elem.support:
+                rules.append(elem.no_support())
+                print(rules[-1])
         i += 1
 
     if manual:
@@ -262,14 +295,13 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
 
     return And(rules)
 
-
 def writer(model, name_file, output_path, printer, manual, number):
     if printer and not manual:
         if number == REAL:
             write_smtlib(model, output_path + name_file)
         else:
             with SuspendTypeChecking():
-                write_smtlib(model, output_path + name_file)
+                write_smtlib(model, output_path + name_file, pysmt.logics.QF_IDL)
         with open(output_path + name_file, "a") as w:
             w.write("(get-model)")
 
@@ -280,7 +312,6 @@ def writer(model, name_file, output_path, printer, manual, number):
             else:
                 w.write(f"(set-logic QF_IDL)\n")
             for rule in model:
-                print(rule)
                 if rule != "":
                     w.write(f"{rule}\n")
             w.write(f"(check-sat)\n")

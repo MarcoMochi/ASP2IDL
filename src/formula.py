@@ -1,10 +1,10 @@
 from pysmt.typing import INT, REAL, BOOL
-from shortcuts import And, Or, Not, Implies, GT, LT, Bool, Symbol, SuspendTypeChecking
+from shortcuts import And, Or, Not, Implies, GT, LT, Eq, Bool, Symbol, SuspendTypeChecking
 types = [INT, REAL]
 
 
 class Rule:
-    def __init__(self, head, type_, optimization=False):
+    def __init__(self, head, type_, support=True, optimization=False):
         self.head = head
         self._recursive = []
         self._positive_body = []
@@ -12,6 +12,7 @@ class Rule:
         self._rules_id = []
         self.type = type_
         self.ott = optimization
+        self.support = support
 
     def get_head(self):
         return self.head
@@ -236,6 +237,9 @@ class Rule:
             temp.append(Symbol(atom, BOOL))
         return temp
 
+    def no_support(self):
+        return Eq(Symbol(self.head, self.type), Symbol("bot", self.type))
+
     def create_rules(self, opt1, opt2, sccs):
         rules = []
         for positive, negative in zip(self._positive_body, self._negative_body):
@@ -268,6 +272,38 @@ class Rule:
             rule += "(and "
         for atom in pos:
             rule += f"(< |{atom}| |{self.head}|) "
+        for atom in neg:
+            rule += f"(not (< |{atom}| bot)) "
+        if len(pos) + len(neg) > 1:
+            return rule + ")"
+        return rule
+
+    def create_association_sccs_manual(self, i):
+        final_rule = ""
+        used_var = []
+        j = 0
+        for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
+            rule = "(assert ("
+            if self.head == "bot":
+                used_var.append(rule_id)
+                rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
+            else:
+                if len(positive) + len(negative) == 0:
+                    continue
+                rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
+            final_rule += rule + ")\n"
+            j += 1
+        return final_rule[:-1]
+
+    def rule_associated_sccs_manual(self, pos, neg):
+        rule = ""
+        if len(pos) + len(neg) > 1:
+            rule += "(and "
+        for atom in pos:
+            if atom in self._recursive:
+                rule += f"(< |{atom}| bot) "
+            else:
+                rule += f"(< |{atom}| |{self.head}|) "
         for atom in neg:
             rule += f"(not (< |{atom}| bot)) "
         if len(pos) + len(neg) > 1:
@@ -311,6 +347,13 @@ class Rule:
             rule += f"(< |{atom}| bot) "
         for atom in neg:
             rule += f"(not (< |{atom}| bot)) "
+        return rule
+
+    def create_difference_sccs_manual(self):
+        rule = ""
+        for atom in self._recursive:
+            rule += f"(assert(=> (> |{self.head}| |{atom}|) (< |{atom}| bot))\n"
+
         return rule
 
     def create_completion_manual(self, i):
