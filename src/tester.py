@@ -5,7 +5,7 @@ import time
 from pysmt.logics import QF_IDL
 from pysmt.shortcuts import get_env, Solver, get_model, EqualsOrIff
 
-domains = ["Hanoi_Tower"]
+domains = ["Knight"]
 
 
 def create_solver():
@@ -17,7 +17,7 @@ def create_solver():
 
 
 def runner(number, args):
-    create_solver()
+    #create_solver()
     for domain in domains:
         translation_time = []
         solving_time = []
@@ -34,14 +34,17 @@ def runner(number, args):
                 os.mkdir(f"{out_path}/yices")
             except:
                 os.mkdir(f"../test/{domain}/translation/solution_scc")
-                out_path = f"../test/{domain}/translation/solution_scc/{time.strftime('%d %b %Y')}"
+                out_path =f"../test/{domain}/translation/solution_scc/{time.strftime('%d %b %Y')}"
                 os.mkdir(out_path)
-                os.mkdir(f"{out_path}/yices")
+                os.mkdir(f"{out_path}/z3")
         else:
-            out_path = f"../test/{domain}/translation/noscc_{time.strftime('%d %b %Y')}"
-            os.mkdir(out_path)
+            out_path = f"../test/{domain}/translation/solution_no_scc/{time.strftime('%d %b %Y')}"
 
-        problem_files = glob.glob(f"../test/{domain}/Aspif/*0.asp")
+        problem_files = glob.glob(f"../test/{domain}/Aspif/*.asp")
+        try:
+            problem_files.remove("scc.asp")
+        except:
+            pass
         already_translated = glob.glob(f"{out_path}/*.asp")
         for file in problem_files:
             name_file = file.split("/")[-1]
@@ -62,14 +65,17 @@ def runner(number, args):
                 ending_time = time.time()
                 translation_time.append(ending_time-starting_time)
 
-            # Start solving
+            else:
+                translation_time.append("Not Applicable")
+            continue
+            print(f"Start Solving {name_file}")
             starting_time = time.time()
             result = os.system(f"yices-smt2 '{out_path}/{name_file}' --stats -t 600 > '{out_path}/yices/{name_file}'")
             ending_time = time.time()
             print(f"Tempo di Solving: {ending_time-starting_time}")
             solving_time.append(ending_time-starting_time)
         with open(f"{out_path}/yices/stats.txt", "w") as w:
-            for i, name in enumerate(problem_files):
-                w.write(f"{name_file}: Translation time: {str(translation_time[i]).split('.')[0]} Solving time: {str(solving_time[i]).split('.')[0]}\n")
+            for i, name in enumerate(sorted(problem_files)):
+                w.write(f"{name.split('/')[-1]}: Translation time: {str(translation_time[i]).split('.')[0]} Solving time: {str(solving_time[i]).split('.')[0]}\n")
 
 

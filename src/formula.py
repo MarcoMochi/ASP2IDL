@@ -158,6 +158,27 @@ class Rule:
                 temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
+    ## Opt 2 Jelia Enrico. Mettere che al posto di B+ < bot si abbia B+ < H. Che implica B+ < bot.
+    def create_inference_opt(self):
+        temp_and = []
+        for positive, negative in zip(self._positive_body, self._negative_body):
+            if self.head == "bot":
+                return Bool(True)
+            with SuspendTypeChecking():
+                    temp_and.append(Implies(And(self.rule_inference_opt(positive, negative)),
+                                        LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
+        return And(temp_and)
+
+    def rule_inference_opt(self, pos, neg):
+        temp = []
+        for atom in pos:
+            with SuspendTypeChecking():
+                temp.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
+        for atom in neg:
+            with SuspendTypeChecking():
+                temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+        return temp
+
     # Create two optimization clauses
     def create_optimization(self, opt1, opt2):
         temp_and = []
