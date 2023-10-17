@@ -159,8 +159,8 @@ class Rule:
                 temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
-    ## Opt 2 Jelia Enrico. Mettere che al posto di B+ < bot si abbia B+ < H. Che implica B+ < bot.
-    def create_inference_opt(self):
+    ## Opt 3 Fraintesa da JELIA: B+ < H and not (B- < bot) -> h < bot
+    def create_inference_opt3(self):
         temp_and = []
         for positive, negative in zip(self._positive_body, self._negative_body):
             if self.head == "bot":
@@ -170,14 +170,26 @@ class Rule:
                                         LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
-    def rule_inference_opt(self, pos, neg):
+    ## Opt 2 Jelia Enrico. B < H and not ( B < bot) -> not (H < bot)
+    def create_inference_opt(self):
+        temp_and = []
+        for positive in self._positive_body:
+            if self.head == "bot":
+                return Bool(True)
+            with SuspendTypeChecking():
+                temp_and.extend(self.rule_inference_opt(positive))
+                #temp_and.append(Implies(And(self.rule_inference_opt(positive)),
+                #                        Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+        return And(temp_and)
+
+    def rule_inference_opt(self, pos):
         temp = []
         for atom in pos:
             with SuspendTypeChecking():
-                temp.append(LT(Symbol(atom, self.type), Symbol(self.head, self.type)))
-        for atom in neg:
-            with SuspendTypeChecking():
-                temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+                temp.append(Implies(And(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                        Not(LT(Symbol(atom, self.type), Symbol("bot", self.type)))),
+                                    Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+
         return temp
 
     # Create two optimization clauses

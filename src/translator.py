@@ -110,12 +110,26 @@ def create_atoms(rules, number, aspif=False):
     return create_atoms_text(rules, number)
 
 
-def check_support(atoms, number, reference, no_support):
+def check_support(atoms, number, reference, no_support, head):
     for atm in atoms:
         if reference.get(atm) is not None:
             continue
         else:
-            no_support[atm] = Rule(atm, number, support=False)
+            no_support[atm] = [Rule(atm, number, support=False), head]
+
+
+def update_rules_with_not_supported(rule, reference):
+    no_support = str(rule[0].get_head())
+    to_update = rule[1]
+
+    assert reference[to_update], "Rule to update deleting not supported atoms is not present"
+    neg = reference[to_update].get_negatives()
+    for elems in neg:
+        if no_support in elems:
+            print(f"Deleting {no_support}")
+            elems.remove(no_support)
+
+
 
 
 def create_atoms_aspif(rules, number):
@@ -153,8 +167,8 @@ def create_atoms_aspif(rules, number):
         positive_atoms, negative_atoms = [], []
         positive_atoms, negative_atoms = get_body_atoms(values[index:], positive_atoms, negative_atoms)
 
-        check_support(positive_atoms, number, head_to_bodies, atom_without_support)
-        check_support(negative_atoms, number, head_to_bodies, atom_without_support)
+        check_support(positive_atoms, number, head_to_bodies, atom_without_support, head)
+        check_support(negative_atoms, number, head_to_bodies, atom_without_support, head)
 
         if head in atom_without_support.keys():
             del atom_without_support[head]
@@ -162,8 +176,7 @@ def create_atoms_aspif(rules, number):
         update_dict(head, number, i + n_disj, positive_atoms, negative_atoms, head_to_bodies)
 
     for key, rule in atom_without_support.items():
-        print(key)
-        head_to_bodies[key] = rule
+        update_rules_with_not_supported(rule, head_to_bodies)
 
     return head_to_bodies, facts
 
@@ -273,9 +286,10 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
             temp = elem.create_inference()
             if temp is not Bool(True):
                 rules.append(temp)
-            if not elem.support:
-                rules.append(elem.no_support())
-                print(rules[-1])
+            #if not elem.support:
+            #    rules.append(elem.no_support())
+            if temp is not Bool(True):
+                rules.append(temp)
         i += 1
 
     if manual:
@@ -301,7 +315,10 @@ def writer(model, name_file, output_path, printer, manual, number):
             write_smtlib(model, output_path + name_file)
         else:
             with SuspendTypeChecking():
-                write_smtlib(model, output_path + name_file, pysmt.logics.QF_IDL)
+                try:
+                    write_smtlib(model, output_path + name_file, pysmt.logics.QF_IDL)
+                except:
+                    write_smtlib(model, output_path + name_file)
         with open(output_path + name_file, "a") as w:
             w.write("(get-model)")
 
