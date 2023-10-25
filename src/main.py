@@ -44,9 +44,9 @@ def main(args):
         if args.scc or args.optimization1 or args.optimization2:
             translations = get_sccs(args.scc, translations)
     print("Getting the translations")
-    model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
+    defs, model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
     print("Created Models")
-    writer(model, name_file, output_path, printer, args.manual, number)
+    writer(model, defs, name_file, output_path, printer, args.manual, number)
     ending_time = time.time()
     print(f"Tempo totale richiesto: {ending_time - starting_time}s")
 

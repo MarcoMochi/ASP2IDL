@@ -6,7 +6,7 @@ from pysmt.shortcuts import And, write_smtlib
 from pysmt.typing import REAL
 from tqdm import tqdm
 from shortcuts import Bool, SuspendTypeChecking
-
+from z3 import *
 
 def get_sccs(file, head_to_atoms, aspif=False):
     involved_atoms = {}
@@ -243,36 +243,62 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
 
 
     i = 0
-
     for key, elem in tqdm(head_to_bodies.items(), total=len(head_to_bodies)):
+        temp_rules = []
         if manual:
             atoms.add(key)
             variable.update(elem.get_rules_id())
             if sccs:
                 temp = elem.create_association_sccs_manual(i)
-                if temp is not Bool(True):
+                if temp != "":
                     rules.append(temp)
                 if len(elem.get_recursive()) > 0:
                     temp = elem.create_difference_sccs_manual()
+                    if temp != "":
+                        rules.append(temp)
+                    temp = elem.create_inference_opt()
                     if temp is not Bool(True):
                         rules.append(temp)
-            rules.append(elem.create_association_manual(i))
-            rules.append(elem.create_difference_manual(i))
-            rules.append(elem.create_inference_manual(i))
+            else:
+                rules.append(elem.create_association_manual(i))
+                rules.append(elem.create_difference_manual(i))
             if opt1:
                 rules.append(elem.create_optimization_manual_one(i))
             if opt2:
                 rules.append(elem.create_optimization_manual_one(i))
-            rules.append(elem.create_completion_manual(i))
+            temp = elem.create_inference_manual(i)
+            if temp != "":
+                rules.append(temp)
+            temp = elem.create_completion_manual(i)
+            if temp != "":
+                rules.append(temp)
         else:
+            atoms.add(key)
+            variable.update(elem.get_rules_id())
             if sccs:
                 temp = elem.create_association_scc()
                 if temp is not Bool(True):
                     rules.append(temp)
                 if len(elem.get_recursive()) > 0:
                     temp = elem.create_difference_sccs()
+                    #temp = elem.create_difference()
                     if temp is not Bool(True):
                         rules.append(temp)
+                    #temp = elem.create_inference_opt()
+                    #if temp is not Bool(True):
+                    #    rules.append(temp)
+                # OPT 4: A < B & B < C -> A < C
+                #if len(elem.get_recursive()) > 0:
+                #    pos_elem = [item for sublist in elem.get_positives() for item in sublist]
+                #    for temp_head in elem.get_recursive():
+                #        if temp_head not in pos_elem:
+                #            continue
+                #        temp_pos = [item for sublist in head_to_bodies[temp_head].get_positives() for item in sublist]
+                #        for pos in temp_pos:
+                #            if pos in elem.get_recursive():
+                #                rules.append(elem.create_transitives(temp_head, pos))
+
+
             else:
                 temp = elem.create_association()
                 if temp is not Bool(True):
@@ -280,17 +306,23 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
                 temp = elem.create_difference()
                 if temp is not Bool(True):
                     rules.append(temp)
+            #temp = elem.create_single_body()
+            #if temp is not Bool(True):
+            #    rules.append(temp)
             temp = elem.create_completion()
             if temp is not Bool(True):
                 rules.append(temp)
             temp = elem.create_inference()
             if temp is not Bool(True):
                 rules.append(temp)
+
             #if not elem.support:
             #    rules.append(elem.no_support())
-            if temp is not Bool(True):
-                rules.append(temp)
+            #if temp is not Bool(True):
+            #    rules.append(temp)
+
         i += 1
+        head_to_bodies[key] = None
 
     if manual:
         if "bot" not in atoms:
@@ -305,22 +337,42 @@ def create_rules(head_to_bodies, number, manual, opt1, opt2, sccs=None):
         for atom in variable:
             definitions.append(f"(declare-fun {atom} () Bool)")
 
-        return definitions + rules
+        return definitions + ["(assert(and\n"], rules
 
-    return And(rules)
+    #with open("./prova.asp", "w") as w:
+    #    w.write(And(rules).to_smtlib())
 
-def writer(model, name_file, output_path, printer, manual, number):
+    for atom in atoms:
+        definitions.append(f"(declare-fun |{atom}| () Int)")
+    for atom in variable:
+        definitions.append(f"(declare-fun {atom} () Bool)")
+
+    return definitions, And(rules).to_smtlib(daggify=False)
+
+def writer(model, definitions, name_file, output_path, printer, manual, number):
     if printer and not manual:
         if number == REAL:
             write_smtlib(model, output_path + name_file)
         else:
             with SuspendTypeChecking():
                 try:
-                    write_smtlib(model, output_path + name_file, pysmt.logics.QF_IDL)
+                    #model_translated = str(model.to_string())
+                    with open(output_path + name_file, "w") as w:
+                        w.write(f"(set-logic QF_IDL)\n")
+                        for defs in definitions:
+                            w.write(f"{defs}\n")
+                        w.write("(assert(and\n")
+                        w.write(f"{model}\n")
+                        w.write("))\n")
+                        w.write(f"(check-sat)\n")
+                        w.write(f"(get-model)\n")
+
+                    #write_smtlib(model, output_path + name_file, pysmt.logics.QF_IDL)
                 except:
-                    write_smtlib(model, output_path + name_file)
-        with open(output_path + name_file, "a") as w:
-            w.write("(get-model)")
+                    pass
+                    #write_smtlib(model, output_path + name_file)
+            with open(output_path + name_file, "a") as w:
+                w.write("(get-model)")
 
     elif printer:
         with open(output_path + name_file, "w") as w:
@@ -328,8 +380,9 @@ def writer(model, name_file, output_path, printer, manual, number):
                 w.write(f"(set-logic QF_RDL)\n")
             else:
                 w.write(f"(set-logic QF_IDL)\n")
-            for rule in model:
+            for rule in definitions+model:
                 if rule != "":
                     w.write(f"{rule}\n")
+            w.write("))\n")
             w.write(f"(check-sat)\n")
             w.write(f"(get-model)\n")

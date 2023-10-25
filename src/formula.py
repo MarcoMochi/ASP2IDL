@@ -126,10 +126,38 @@ class Rule:
 
     def create_difference_sccs(self):
         temp_and = []
-        for atom in self._recursive:
-            with SuspendTypeChecking():
-                temp_and.append(Implies(GT(Symbol(self.head, self.type), Symbol(atom, self.type)),
-                                    LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+        for pos in self._positive_body:
+            for atom in pos:
+                if atom in self._recursive:
+                    if len(pos) == 1:
+                        with SuspendTypeChecking():
+                            temp_and.append(Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                                And(LT(Symbol(atom, self.type), Symbol("bot", self.type)),
+                                                LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+                    else:
+                        with SuspendTypeChecking():
+                            temp_and.append(Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                                LT(Symbol(atom, self.type), Symbol("bot", self.type))))
+
+        return And(temp_and)
+
+    def create_single_body(self):
+        total_and = []
+        if self.head == "bot":
+            return And([])
+        for positive, negative in zip(self._positive_body, self._negative_body):
+            if len(positive) == 1 and len(negative) == 0 and positive[0] not in self._recursive:
+               with SuspendTypeChecking():
+                    total_and.append(self.rule_difference(positive, negative))
+
+        return And(total_and)
+
+    def single_body(self, pos, neg):
+        temp_and = []
+        with SuspendTypeChecking():
+            temp_and.append(Implies(LT(Symbol(pos[0], self.type), Symbol(self.head, self.type)),
+                                (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),
+                                 LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
     # Create formulas like:
@@ -166,9 +194,19 @@ class Rule:
             if self.head == "bot":
                 return Bool(True)
             with SuspendTypeChecking():
-                    temp_and.append(Implies(And(self.rule_inference_opt(positive, negative)),
+                    temp_and.append(Implies(And(self.rule_inference_opt3(positive, negative)),
                                         LT(Symbol(self.head, self.type), Symbol("bot", self.type))))
         return And(temp_and)
+
+    def rule_inference_opt3(self, pos, neg):
+        temp = []
+        for pos, neg in pos:
+            with SuspendTypeChecking():
+                temp.append(Implies(And(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                        Not(LT(Symbol(atom, self.type), Symbol("bot", self.type)))),
+                                    Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+
+        return temp
 
     ## Opt 2 Jelia Enrico. B < H and not ( B < bot) -> not (H < bot)
     def create_inference_opt(self):
@@ -185,12 +223,21 @@ class Rule:
     def rule_inference_opt(self, pos):
         temp = []
         for atom in pos:
-            with SuspendTypeChecking():
-                temp.append(Implies(And(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
-                                        Not(LT(Symbol(atom, self.type), Symbol("bot", self.type)))),
-                                    Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
+            if atom in self._recursive:
+                with SuspendTypeChecking():
+                    temp.append(Implies(And(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
+                                            Not(LT(Symbol(atom, self.type), Symbol("bot", self.type)))),
+                                        Not(LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
 
         return temp
+
+    def create_transitives(self, temp_head, pos):
+        return Implies(And(
+                        LT(Symbol(pos, self.type), Symbol(temp_head, self.type)),
+                        LT(Symbol(temp_head, self.type), Symbol(self.head, self.type)),
+                        ),
+            (LT(Symbol(pos, self.type), Symbol(self.head, self.type)))
+            )
 
     # Create two optimization clauses
     def create_optimization(self, opt1, opt2):
@@ -266,7 +313,7 @@ class Rule:
         used_var = []
         j = 0
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "(assert ("
+            rule = "("
             if self.head == "bot":
                 used_var.append(rule_id)
                 rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
@@ -274,7 +321,7 @@ class Rule:
                 if len(positive) + len(negative) == 0:
                     continue
                 rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
-            final_rule += rule + ")\n"
+            final_rule += rule + "\n"
             j += 1
         return final_rule[:-1]
 
@@ -295,7 +342,7 @@ class Rule:
         used_var = []
         j = 0
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "(assert ("
+            rule = "("
             if self.head == "bot":
                 used_var.append(rule_id)
                 rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
@@ -303,7 +350,7 @@ class Rule:
                 if len(positive) + len(negative) == 0:
                     continue
                 rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
-            final_rule += rule + ")\n"
+            final_rule += rule + "\n"
             j += 1
         return final_rule[:-1]
 
@@ -329,7 +376,7 @@ class Rule:
                 if self.head == "bot":
                     return rule
                 else:
-                    rule += f"(assert ({self.rule_difference_manual(positive, negative)})\n"
+                    rule += f"({self.rule_difference_manual(positive, negative)}\n"
 
         return rule[:-1]
 
@@ -348,9 +395,9 @@ class Rule:
         rule = ""
         for positive, negative in zip(self._positive_body, self._negative_body):
             if len(positive) + len(negative) == 0:
-                rule += f"(assert(< |{self.head}| bot))\n"
+                rule += f"(< |{self.head}| bot)\n"
             else:
-                rule += f"(assert(=> (and {self.rule_inference_manual(positive, negative)}) (< |{self.head}| bot)))\n"
+                rule += f"(=> (and {self.rule_inference_manual(positive, negative)}) (< |{self.head}| bot))\n"
         return rule[:-1]
 
     def rule_inference_manual(self, pos, neg):
@@ -364,22 +411,25 @@ class Rule:
     def create_difference_sccs_manual(self):
         rule = ""
         for atom in self._recursive:
-            rule += f"(assert(=> (> |{self.head}| |{atom}|) (< |{atom}| bot))\n"
+            rule += f"(=> (> |{self.head}| |{atom}|) (< |{atom}| bot))\n"
 
         return rule
 
     def create_completion_manual(self, i):
-        rule = f"(assert (=> "
+        rule = f"(=> "
         if len(self._rules_id) > 0:
             related = self.rule_completion_manual()
             if related != "":
                 if self.head == "bot":
-                    return f"(assert (and {self.rule_completion_manual()}))"
-                return rule + f"(< |{self.head}| bot) (or {related})) )"
+                    if len(self._rules_id) > 1:
+                        return f"(and {self.rule_completion_manual()})"
+                    else:
+                        return f"{self.rule_completion_manual()}"
+                return rule + f"(< |{self.head}| bot) (or {related}))"
             else:
                 return ""
         else:
-            return f"(assert (not (< |{self.head}| bot)))"
+            return f"(not (< |{self.head}| bot))"
 
     def rule_completion_manual(self):
         rule = ""
