@@ -5,7 +5,7 @@ import time
 from pysmt.logics import QF_IDL
 from pysmt.shortcuts import get_env, Solver, get_model, EqualsOrIff
 
-domains = ["Knight"]
+domains = ["GraphColouring","HanoiTower","Labyrinth_pre"]
 
 
 def create_solver():
@@ -24,8 +24,8 @@ def runner(number, args):
         solving_status = []
         print(f"Starting Domain: {domain}")
         out_path = ""
-        if not os.path.isdir(f"../test/{domain}/translation/"):
-            os.mkdir(f"../test/{domain}/translation/")
+        if not os.path.isdir(f"../test/{domain}/translation"):
+            os.mkdir(f"../test/{domain}/translation")
         if args.scc:
             out_path = f"../test/{domain}/translation/solution_scc/{time.strftime('%d %b %Y')}"
             try:
@@ -36,9 +36,18 @@ def runner(number, args):
                 os.mkdir(f"../test/{domain}/translation/solution_scc")
                 out_path =f"../test/{domain}/translation/solution_scc/{time.strftime('%d %b %Y')}"
                 os.mkdir(out_path)
-                os.mkdir(f"{out_path}/z3")
+                os.mkdir(f"{out_path}/yices")
         else:
             out_path = f"../test/{domain}/translation/solution_no_scc/{time.strftime('%d %b %Y')}"
+            try:
+                if not os.path.isdir(out_path):
+                    os.mkdir(out_path)
+                os.mkdir(f"{out_path}/yices")
+            except:
+                os.mkdir(f"../test/{domain}/translation/solution_no_scc")
+                out_path =f"../test/{domain}/translation/solution_no_scc/{time.strftime('%d %b %Y')}"
+                os.mkdir(out_path)
+                os.mkdir(f"{out_path}/yices")
 
         problem_files = glob.glob(f"../test/{domain}/Aspif/*.asp")
         try:
@@ -60,22 +69,21 @@ def runner(number, args):
                     else:
                         temp_path = f"../test/{domain}/Aspif/scc.asp"
                         translations = get_sccs(temp_path, translations, True)
-                model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
-                writer(model, name_file, out_path + "/", True, args.manual, number)
+                defs, model = create_rules(translations, number, args.manual, args.optimization1, args.optimization2, args.scc)
+                writer(model, defs, name_file, out_path + "/", True, args.manual, number)
                 ending_time = time.time()
                 translation_time.append(ending_time-starting_time)
 
             else:
                 translation_time.append("Not Applicable")
-            continue
             print(f"Start Solving {name_file}")
             starting_time = time.time()
-            result = os.system(f"yices-smt2 '{out_path}/{name_file}' --stats -t 600 > '{out_path}/yices/{name_file}'")
+            os.system(f"yices-smt2 '{out_path}/{name_file}' --stats -t 600 > '{out_path}/yices/{name_file}'")
             ending_time = time.time()
             print(f"Tempo di Solving: {ending_time-starting_time}")
             solving_time.append(ending_time-starting_time)
         with open(f"{out_path}/yices/stats.txt", "w") as w:
-            for i, name in enumerate(sorted(problem_files)):
+            for i, name in enumerate(problem_files):
                 w.write(f"{name.split('/')[-1]}: Translation time: {str(translation_time[i]).split('.')[0]} Solving time: {str(solving_time[i]).split('.')[0]}\n")
 
 

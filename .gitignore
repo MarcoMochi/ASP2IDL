@@ -1,4 +1,9 @@
 .DS_Store
+*/.DS_Store
+*.pyc
+*/.pyc
+
+# Folders with Tests and Instances
 Traduzione/*
 Results/*
 LP2DIFF/*
