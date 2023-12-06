@@ -43,9 +43,7 @@ class Rule:
 
     def get_recursive(self):
         return self._recursive
-    # Creation of rules using pysmt library
 
-    # Create formulas like:
     # W_n -> H > B+ and not (B- < bot)
     def create_association(self):
         total_and = []
@@ -69,6 +67,7 @@ class Rule:
                 temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
+    # W_n -> (H > B+)_SCC and (bot > B+)_notSCC and not (B- < bot)
     def create_association_scc(self):
         total_and = []
         for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
@@ -95,9 +94,7 @@ class Rule:
                 temp_and.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return And(temp_and)
 
-    # Create formulas like:
     # H > B+ -> B+ < bot
-    # Se un solo atomo positivo: H > B+ -> B+ < bot and H < bot
     def create_difference(self):
         total_and = []
         for positive, negative in zip(self._positive_body, self._negative_body):
@@ -124,6 +121,7 @@ class Rule:
                                      LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
         return And(temp_and)
 
+    # IF B in SCC(H): H > B+ -> B+ < bot
     def create_difference_sccs(self):
         temp_and = []
         for pos in self._positive_body:
@@ -141,26 +139,6 @@ class Rule:
 
         return And(temp_and)
 
-    def create_single_body(self):
-        total_and = []
-        if self.head == "bot":
-            return And([])
-        for positive, negative in zip(self._positive_body, self._negative_body):
-            if len(positive) == 1 and len(negative) == 0 and positive[0] not in self._recursive:
-               with SuspendTypeChecking():
-                    total_and.append(self.rule_difference(positive, negative))
-
-        return And(total_and)
-
-    def single_body(self, pos, neg):
-        temp_and = []
-        with SuspendTypeChecking():
-            temp_and.append(Implies(LT(Symbol(pos[0], self.type), Symbol(self.head, self.type)),
-                                (And(LT(Symbol(pos[0], self.type), Symbol("bot", self.type))),
-                                 LT(Symbol(self.head, self.type), Symbol("bot", self.type)))))
-        return And(temp_and)
-
-    # Create formulas like:
     # If sum(B+,B-) == 0 creates H < bot
     # Otherwise B+ < bot and not (B- < bot) -> H < bot
     def create_inference(self):
@@ -187,7 +165,8 @@ class Rule:
                 temp.append(Not(LT(Symbol(atom, self.type), Symbol("bot", self.type))))
         return temp
 
-    ## Opt 3 Fraintesa da JELIA: B+ < H and not (B- < bot) -> h < bot
+    # NOT USED
+    # B+ < H and not (B- < bot) -> h < bot
     def create_inference_opt3(self):
         temp_and = []
         for positive, negative in zip(self._positive_body, self._negative_body):
@@ -208,7 +187,8 @@ class Rule:
 
         return temp
 
-    ## Opt 2 Jelia Enrico. B < H and not ( B < bot) -> not (H < bot)
+    # # NOT USED
+    # B < H and not ( B < bot) -> not (H < bot)
     def create_inference_opt(self):
         temp_and = []
         for positive in self._positive_body:
@@ -231,6 +211,7 @@ class Rule:
 
         return temp
 
+    # NOT USED
     def create_transitives(self, temp_head, pos):
         return Implies(And(
                         LT(Symbol(pos, self.type), Symbol(temp_head, self.type)),
@@ -239,7 +220,7 @@ class Rule:
             (LT(Symbol(pos, self.type), Symbol(self.head, self.type)))
             )
 
-    # Create two optimization clauses
+    # NOT USED
     def create_optimization(self, opt1, opt2):
         temp_and = []
         if self.head == "bot" or len(self._recursive) == 0:
@@ -270,7 +251,6 @@ class Rule:
             return Implies(LT(Symbol(atom, self.type), Symbol(self.head, self.type)),
                        Not(LT(Symbol(self.head, self.type), Symbol(atom, self.type))))
 
-    # Create formulas like:
     # if bot is head: W_i and ... and W_n
     # Otherwise: H < bot -> W_i or .. or W_n
     def create_completion(self):
@@ -295,145 +275,3 @@ class Rule:
                 continue
             temp.append(Symbol(atom, BOOL))
         return temp
-
-    def no_support(self):
-        return Eq(Symbol(self.head, self.type), Symbol("bot", self.type))
-
-    def create_rules(self, opt1, opt2, sccs):
-        rules = []
-        for positive, negative in zip(self._positive_body, self._negative_body):
-            rules.append(self.create_inference(positive, negative))
-
-        #rules.append(self.create_optimization(opt1, opt2))
-        return rules
-
-    # Creation of rules manual
-    def create_association_manual(self, i):
-        final_rule = ""
-        used_var = []
-        j = 0
-        for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "("
-            if self.head == "bot":
-                used_var.append(rule_id)
-                rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
-            else:
-                if len(positive) + len(negative) == 0:
-                    continue
-                rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
-            final_rule += rule + "\n"
-            j += 1
-        return final_rule[:-1]
-
-    def rule_associated_manual(self, pos, neg):
-        rule = ""
-        if len(pos) + len(neg) > 1:
-            rule += "(and "
-        for atom in pos:
-            rule += f"(< |{atom}| |{self.head}|) "
-        for atom in neg:
-            rule += f"(not (< |{atom}| bot)) "
-        if len(pos) + len(neg) > 1:
-            return rule + ")"
-        return rule
-
-    def create_association_sccs_manual(self, i):
-        final_rule = ""
-        used_var = []
-        j = 0
-        for rule_id, positive, negative in zip(self._rules_id, self._positive_body, self._negative_body):
-            rule = "("
-            if self.head == "bot":
-                used_var.append(rule_id)
-                rule += f"=> {rule_id} (not {(self.rule_associated_manual(positive, negative))}))"
-            else:
-                if len(positive) + len(negative) == 0:
-                    continue
-                rule += f"=> {rule_id} {self.rule_associated_manual(positive, negative)})"
-            final_rule += rule + "\n"
-            j += 1
-        return final_rule[:-1]
-
-    def rule_associated_sccs_manual(self, pos, neg):
-        rule = ""
-        if len(pos) + len(neg) > 1:
-            rule += "(and "
-        for atom in pos:
-            if atom in self._recursive:
-                rule += f"(< |{atom}| bot) "
-            else:
-                rule += f"(< |{atom}| |{self.head}|) "
-        for atom in neg:
-            rule += f"(not (< |{atom}| bot)) "
-        if len(pos) + len(neg) > 1:
-            return rule + ")"
-        return rule
-
-    def create_difference_manual(self, i):
-        rule = ""
-        for positive, negative in zip(self._positive_body, self._negative_body):
-            if len(positive) > 0:
-                if self.head == "bot":
-                    return rule
-                else:
-                    rule += f"({self.rule_difference_manual(positive, negative)}\n"
-
-        return rule[:-1]
-
-    def rule_difference_manual(self, pos, neg):
-        rule = "and "
-        if len(pos) > 1 or len(neg) > 0 or not self.ott:
-            for atom in pos:
-                rule += f"(=> (< |{atom}| |{self.head}|) (< |{atom}| bot))"
-        else:
-            rule += f"(=> (< |{pos[0]}| |{self.head}|) (and (< |{pos[0]}| bot) (< |{self.head}| bot)))"
-        return rule + ")"
-
-    def create_inference_manual(self, i):
-        if self.head == "bot":
-            return ""
-        rule = ""
-        for positive, negative in zip(self._positive_body, self._negative_body):
-            if len(positive) + len(negative) == 0:
-                rule += f"(< |{self.head}| bot)\n"
-            else:
-                rule += f"(=> (and {self.rule_inference_manual(positive, negative)}) (< |{self.head}| bot))\n"
-        return rule[:-1]
-
-    def rule_inference_manual(self, pos, neg):
-        rule = ""
-        for atom in pos:
-            rule += f"(< |{atom}| bot) "
-        for atom in neg:
-            rule += f"(not (< |{atom}| bot)) "
-        return rule
-
-    def create_difference_sccs_manual(self):
-        rule = ""
-        for atom in self._recursive:
-            rule += f"(=> (> |{self.head}| |{atom}|) (< |{atom}| bot))\n"
-
-        return rule
-
-    def create_completion_manual(self, i):
-        rule = f"(=> "
-        if len(self._rules_id) > 0:
-            related = self.rule_completion_manual()
-            if related != "":
-                if self.head == "bot":
-                    if len(self._rules_id) > 1:
-                        return f"(and {self.rule_completion_manual()})"
-                    else:
-                        return f"{self.rule_completion_manual()}"
-                return rule + f"(< |{self.head}| bot) (or {related}))"
-            else:
-                return ""
-        else:
-            return f"(not (< |{self.head}| bot))"
-
-    def rule_completion_manual(self):
-        rule = ""
-        for i, atom in enumerate(self._rules_id):
-            if len(self._positive_body[i]) + len(self._negative_body[i]) > 0:
-                rule += f"{atom} "
-        return rule
