@@ -8,6 +8,7 @@ from shortcuts import Bool, SuspendTypeChecking
 
 def get_sccs(file, head_to_atoms, aspif=False):
     involved_atoms = {}
+    atom_sccs = {}
     with open(file) as f:
         whole = f.read()
         values = [x.strip() for x in whole.split("scc_atom")  if len(x)>0]
@@ -113,6 +114,7 @@ def update_rules_with_not_supported(rule, reference):
     neg = reference[to_update].get_negatives()
     for elems in neg:
         if no_support in elems:
+            #print(f"Deleting {no_support}")
             elems.remove(no_support)
 
 
@@ -219,12 +221,14 @@ def create_atoms_text(rules, number):
     return head_to_bodies
 
 
-def create_rules(head_to_bodies,sccs=None):
+def create_rules(head_to_bodies, number, sccs=None):
     rules = []
     definitions = []
     atoms = set()
     variable = set()
 
+
+    i = 0
     for key, elem in tqdm(head_to_bodies.items(), total=len(head_to_bodies)):
 
         atoms.add(key)
@@ -251,6 +255,7 @@ def create_rules(head_to_bodies,sccs=None):
         if temp is not Bool(True):
             rules.append(temp)
 
+        i += 1
         head_to_bodies[key] = None
 
     for atom in atoms:
