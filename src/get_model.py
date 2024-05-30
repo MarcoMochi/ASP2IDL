@@ -2,7 +2,6 @@ import argparse
 import sys
 import os
 import re
-import pandas as pd
 from translator import reader
 
 
@@ -65,9 +64,11 @@ def write_model(facts, model, path):
         w.write("% Derived Atoms\n")
         w.write("\n".join(model))
 
+
 def print_model(facts, model):
     print(f"Original Facts: {' '.join(facts)}")
     print(f"Derived atoms: {' '.join(model)}")
+
 
 def main(args):
     original = args.aspif
@@ -82,7 +83,6 @@ def main(args):
         write_model(facts, model, args.output)
     else:
         print_model(facts, model)
-
 
 
 if __name__ == '__main__':
