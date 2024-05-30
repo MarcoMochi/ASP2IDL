@@ -3,6 +3,7 @@ import os.path
 import pysmt.logics
 from pysmt.typing import INT, REAL
 from translator import reader, create_atoms, create_rules, writer, get_sccs
+from tester import runner
 import sys
 import argparse
 import time
@@ -26,6 +27,8 @@ def main(args):
     number = INT
     print(f"Started translation of: {name_file}")
     starting_time = time.time()
+    #runner(INT, args)
+    #return
     if args.aspif:
         lines = reader(path, True)
         translations, facts = create_atoms(lines, number, True)
@@ -40,13 +43,10 @@ def main(args):
     defs, model = create_rules(translations, number, args.scc)
     print("Created Models")
     writer(model, defs, name_file, output_path, printer, number)
-    ending_time = time.time()
-    print(f"Tempo totale richiesto: {ending_time - starting_time}s")
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", help="Path of the file to be translated", required=True)
+    parser.add_argument("-i", "--input", help="Path of the file to be translated")
     parser.add_argument("-o", "--output", help="Decide if the obtained translation should be printed or not "
                                                "and specify the path")
     parser.add_argument("-aspif", "--aspif", help="Define the input format of the model as aspif", action="store_true")

@@ -12,3 +12,5 @@ checkers/*
 Statistica/
 test/*
 utils/*
+Exec/
+.*/idea/*

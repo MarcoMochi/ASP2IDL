@@ -25,9 +25,7 @@ def get_sccs(file, head_to_atoms, aspif=False):
 
     for id_scc, atoms in involved_atoms.items():
         for i, atom in enumerate(atoms):
-            if atom not in head_to_atoms.keys():
-                print(f"{atom} not in Rules")
-            else:
+            if atom in head_to_atoms.keys():
                 head_to_atoms[atom].set_recursive(atoms[:i] + atoms[i + 1:])
 
     return head_to_atoms
@@ -116,7 +114,7 @@ def update_rules_with_not_supported(rule, reference):
     neg = reference[to_update].get_negatives()
     for elems in neg:
         if no_support in elems:
-            print(f"Deleting {no_support}")
+            #print(f"Deleting {no_support}")
             elems.remove(no_support)
 
 
@@ -264,7 +262,6 @@ def create_rules(head_to_bodies, number, sccs=None):
         definitions.append(f"(declare-fun |{atom}| () Int)")
     for atom in variable:
         definitions.append(f"(declare-fun {atom} () Bool)")
-
     return definitions, And(rules).to_smtlib(daggify=False)
 
 
